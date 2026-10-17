@@ -1,0 +1,467 @@
+@import "tailwindcss";
+
+/* next-themes toggles a `.dark` class on <html>; teach Tailwind v4's
+   `dark:` variant to key off that class instead of the OS media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * EZTab design tokens.
+ *
+ * The palette is pulled directly from the supplied logo (sampled, not
+ * guessed): brand blue #005CF2 and the logo's own near-black #06070E,
+ * which we reuse as the dark-mode background rather than a generic
+ * #0B0B0B/#111 "AI dark mode" — it ties the theme back to the actual
+ * brand asset. Light and dark are tuned independently, not inverted.
+ */
+:root {
+  --font-body: var(--font-ibm-sans), var(--font-ibm-sans-arabic),
+    ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-ibm-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --brand-primary: #005cf2;
+  --brand-primary-dark: #0043b8;
+  --brand-primary-light: #4c8dff;
+  --brand-primary-tint: #eaf1ff;
+
+  --brand-background: #ffffff;
+  --brand-surface: #f6f8fc;
+  --brand-surface-raised: #ffffff;
+  --brand-ink: #06070e;
+  --brand-muted: #5b6472;
+  --brand-border: #e4e8f0;
+
+  --brand-success: #16a34a;
+  --brand-danger: #dc2626;
+  --brand-warning: #d97706;
+}
+
+.dark {
+  --brand-primary: #3d82ff;
+  --brand-primary-dark: #005cf2;
+  --brand-primary-light: #7bb0ff;
+  --brand-primary-tint: #101a2e;
+
+  --brand-background: #15171F;
+  --brand-surface: #15171F;
+  --brand-surface-raised: #15171F;
+  --brand-ink: #f3f5f9;
+  --brand-muted: #9aa3b2;
+  --brand-border: #23262f;
+
+  --brand-success: #22c55e;
+  --brand-danger: #f87171;
+  --brand-warning: #fbbf24;
+}
+
+/* Expose the tokens to Tailwind's utility generator (bg-primary,
+   text-ink, border-border, etc.) via the v4 CSS-first `@theme` API. */
+@theme inline {
+  --color-primary: var(--brand-primary);
+  --color-primary-dark: var(--brand-primary-dark);
+  --color-primary-light: var(--brand-primary-light);
+  --color-primary-tint: var(--brand-primary-tint);
+
+  --color-background: var(--brand-background);
+  --color-surface: var(--brand-surface);
+  --color-surface-raised: var(--brand-surface-raised);
+  --color-ink: var(--brand-ink);
+  --color-muted: var(--brand-muted);
+  --color-border: var(--brand-border);
+
+  --color-success: var(--brand-success);
+  --color-danger: var(--brand-danger);
+  --color-warning: var(--brand-warning);
+
+  --font-sans: var(--font-body), var(--font-ubuntu);
+  --font-mono: var(--font-code);
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes avatar-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 500ms ease-out both;
+}
+
+.avatar-fade-in {
+  animation: avatar-fade-in 900ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  background-color: var(--brand-background);
+  color: var(--brand-ink);
+}
+
+/* Link-in-bio redesign styles */
+:root {
+  --radius-panel: 28px;
+  --radius-card: 20px;
+  --shadow-soft: 0 10px 60px -20px rgba(6, 7, 14, 0.25);
+  --shadow-lift: 0 16px 80px -24px rgba(6, 7, 14, 0.4);
+}
+
+:root:not(.dark) .profile-bio,
+:root:not(.dark) .link-card-subtitle,
+:root:not(.dark) .footer-credit,
+:root:not(.dark) .contact-line {
+  font-weight: 500;
+}
+
+.dark {
+  --shadow-soft: 0 10px 60px -20px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 16px 80px -24px rgba(0, 0, 0, 0.6);
+}
+
+.link-in-bio-main {
+  position: relative;
+  min-height: 100vh;
+  background: var(--brand-background);
+  font-family: var(--font-ubuntu), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.link-in-bio-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.wave-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to bottom, rgba(0, 92, 242, 0.08), transparent);
+}
+
+.wave-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to top, rgba(0, 92, 242, 0.05), transparent);
+}
+
+.wave-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  fill: rgba(0, 92, 242, 0.06);
+}
+
+.link-in-bio-panel {
+  position: relative;
+  z-index: 10;
+  margin: 2rem auto 4rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background: var(--brand-surface-raised);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-soft);
+  max-width: min(1200px, 90vw);
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+
+.profile-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 1rem;
+}
+
+.avatar-wrapper {
+  position: relative;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.1s linear;
+}
+
+.avatar-ring {
+  padding: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.9) 0%, rgba(0, 92, 242, 0.1) 100%);
+  box-shadow: 0 0 0 6px var(--brand-primary-tint), 0 20px 60px -30px rgba(6, 7, 14, 0.5);
+}
+
+.avatar-spinning-ring {
+  position: absolute;
+  inset: -22px;
+  border-radius: 50%;
+  border: 5px dashed var(--brand-primary-light);
+  opacity: 0.95;
+  pointer-events: none;
+  animation: spin-cw 8s linear infinite;
+}
+
+@keyframes spin-cw {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.avatar-inner {
+  width: clamp(200px, 24vw, 260px);
+  height: clamp(200px, 24vw, 260px);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--brand-surface);
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(6, 7, 14, 0.06);
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--brand-muted);
+}
+
+.profile-name {
+  margin-top: clamp(2.75rem, 6vw, 3.75rem);
+  font-size: clamp(36px, 5vw, 48px);
+  font-weight: 700;
+  color: var(--brand-ink);
+  line-height: 1.1;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.profile-bio {
+  margin-top: clamp(1.25rem, 3vw, 1.75rem);
+  max-width: 28rem;
+  font-size: clamp(1rem, 2vw, 1.125rem);
+  line-height: 1.7;
+  color: var(--brand-ink);
+  text-wrap: pretty;
+}
+
+.contact-line {
+  margin-top: clamp(1.75rem, 3vw, 2.25rem);
+  font-size: clamp(0.95rem, 2vw, 1.05rem);
+  font-weight: 500;
+  color: var(--brand-ink);
+}
+
+.email-link {
+  text-decoration: underline;
+  color: var(--brand-ink);
+  font-weight: 700;
+}
+
+.links-column {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.5rem, 3vw, 2rem);
+  padding-top: clamp(1rem, 2vw, 2rem);
+}
+
+.link-cards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.25rem);
+}
+
+.link-card {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 1.25rem);
+  padding: clamp(1rem, 2vw, 1.25rem) clamp(1.25rem, 2vw, 1.5rem);
+  background: var(--brand-surface);
+  border-radius: var(--radius-card);
+  text-decoration: none;
+  color: var(--brand-ink);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.32s ease-out, border-color 0.32s ease-out;
+  border: 2px solid var(--brand-border);
+  will-change: transform;
+  position: relative;
+}
+
+.link-card:hover,
+.link-card:focus-visible {
+  transform: translateY(-5px) scale(1.015);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--brand-primary-light);
+  outline: 2px solid var(--brand-primary-light);
+  outline-offset: 2px;
+}
+
+.link-card:active {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: var(--shadow-soft);
+  transition-duration: 0.08s;
+}
+
+.link-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(2.5rem, 4vw, 3rem);
+  height: clamp(2.5rem, 4vw, 3rem);
+  border-radius: 50%;
+  background: var(--brand-primary-tint);
+  color: var(--brand-primary);
+  flex-shrink: 0;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.link-card:hover .link-card-icon,
+.link-card:focus-visible .link-card-icon {
+  transform: scale(1.1) rotate(-8deg);
+}
+
+.link-card:active .link-card-icon {
+  transform: scale(0.94);
+  transition-duration: 0.08s;
+}
+
+.link-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 1;
+  gap: 0.25rem;
+}
+
+.link-card-title {
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: right;
+  text-wrap: balance;
+}
+
+.link-card.placeholder {
+  cursor: default;
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.link-card.placeholder:hover,
+.link-card.placeholder:focus-visible {
+  transform: none;
+  box-shadow: var(--shadow-soft);
+  border-color: var(--brand-border);
+  outline: none;
+}
+
+.link-card.placeholder:hover .link-card-icon,
+.link-card.placeholder:focus-visible .link-card-icon,
+.link-card.placeholder:active .link-card-icon {
+  transform: none;
+}
+
+.link-card-subtitle {
+  font-size: clamp(12px, 2vw, 14px);
+  color: var(--brand-muted);
+  text-align: right;
+}
+
+.action-buttons-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(1.5rem, 3vw, 2rem);
+}
+
+.footer-credit {
+  text-align: center;
+  font-size: 11px;
+  color: var(--brand-muted);
+  margin-top: clamp(0.5rem, 1vw, 1rem);
+  padding-top: clamp(0.75rem, 1.5vw, 1rem);
+  border-top: 1px solid var(--brand-border);
+  width: 100%;
+}
+
+@media (hover: none) {
+  .link-card:hover,
+  .link-card:hover .link-card-icon {
+    transform: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .wave-svg {
+    transform: rotate(90deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .link-in-bio-panel {
+    margin: 1rem 1rem 2rem;
+    padding: 1.5rem 1rem;
+  }
+
+  .profile-column {
+    padding-top: 1.75rem;
+  }
+
+  .profile-name {
+    font-size: clamp(30px, 8vw, 38px);
+    margin-top: clamp(2.5rem, 8vw, 3rem);
+  }
+
+  .link-card {
+    min-height: 56px;
+  }
+  
+  .link-card-title {
+    font-size: clamp(20px, 6vw, 28px);
+  }
+}
