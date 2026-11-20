@@ -24,6 +24,16 @@ export const metadata: Metadata = {
     template: "%s | EZTab",
   },
   description: "EZTab — tap-to-share digital business cards.",
+  icons: {
+    icon: [
+      {
+        url: "/favicon.svg",
+        type: "image/svg+xml",
+        sizes: "any",
+      },
+    ],
+    shortcut: "/favicon.svg",
+  },
 };
 
 export default async function RootLayout({

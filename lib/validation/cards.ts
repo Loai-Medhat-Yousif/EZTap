@@ -56,6 +56,8 @@ function optionalUrl() {
     });
 }
 
+export { optionalUrl };
+
 function optionalEmail() {
   return z
     .string()
@@ -100,22 +102,160 @@ export type ProfileDetailsInput = z.infer<typeof profileDetailsSchema>;
 // `useForm`'s field-values generic must be, not the inferred/output type.
 export type ProfileDetailsFormInput = z.input<typeof profileDetailsSchema>;
 
-export const googleReviewDetailsSchema = z.object({
-  googleReviewUrl: httpUrlSchema,
+/**
+ * The single field every "scan -> straight redirect" card type
+ * (GOOGLE_REVIEW, INSTAPAY, ONLINE_CASH) stores: the external URL the
+ * tag sends the visitor to. Same shape and validation for all three.
+ */
+export const targetUrlSchema = z.object({
+  targetUrl: httpUrlSchema,
 });
-export type GoogleReviewDetailsInput = z.infer<typeof googleReviewDetailsSchema>;
+export type TargetUrlInput = z.infer<typeof targetUrlSchema>;
+
+/**
+ * The store page's fields. It reuses every personal-profile field that
+ * fits a store (name, bio, phone, whatsapp, email, website, maps) and
+ * adds the store-only ones (category, address, opening hours) plus the
+ * "leave us a review" target. `fullName` is the store's name.
+ */
+export const storeDetailsSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, "Enter a name")
+    .max(120, "Name is too long"),
+  category: optionalTrimmed(80),
+  bio: optionalTrimmed(500),
+  phone: optionalPhone(),
+  whatsapp: optionalPhone(),
+  email: optionalEmail(),
+  website: optionalUrl().optional(),
+  googleMapsUrl: optionalUrl().optional(),
+  address: optionalTrimmed(240),
+  openingHours: optionalTrimmed(240),
+  googleReviewUrl: optionalUrl().optional(),
+});
+export type StoreDetailsInput = z.infer<typeof storeDetailsSchema>;
+export type StoreDetailsFormInput = z.input<typeof storeDetailsSchema>;
+
+/**
+ * The multiple-payment-methods page's own fields: a name, a short bio and
+ * (separately managed) a list of payment links. It has none of the contact
+ * channels a personal profile or store has — the whole point of the card
+ * is the collection of payment methods.
+ */
+export const paymentDetailsSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, "Enter a name")
+    .max(120, "Name is too long"),
+  bio: optionalTrimmed(500),
+});
+export type PaymentDetailsInput = z.infer<typeof paymentDetailsSchema>;
+export type PaymentDetailsFormInput = z.input<typeof paymentDetailsSchema>;
+
+/**
+ * The menu page's base info — same fields as a full store page. The menu
+ * structure itself (categories, items, offers) is managed separately.
+ */
+export const menuDetailsSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, "Enter a name")
+    .max(120, "Name is too long"),
+  category: optionalTrimmed(80),
+  bio: optionalTrimmed(500),
+  phone: optionalPhone(),
+  whatsapp: optionalPhone(),
+  email: optionalEmail(),
+  website: optionalUrl().optional(),
+  googleMapsUrl: optionalUrl().optional(),
+  address: optionalTrimmed(240),
+  openingHours: optionalTrimmed(240),
+  googleReviewUrl: optionalUrl().optional(),
+});
+export type MenuDetailsInput = z.infer<typeof menuDetailsSchema>;
+export type MenuDetailsFormInput = z.input<typeof menuDetailsSchema>;
+
+function optionalDateTime() {
+  return z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim().length > 0 ? v.trim() : undefined))
+    .refine((v) => v === undefined || !Number.isNaN(Date.parse(v)), {
+      message: "Enter a valid date and time",
+    });
+}
+
+export const menuCategorySchema = z.object({
+  name: z.string().trim().min(1, "Enter a name").max(120, "Name is too long"),
+  isActive: z.boolean().default(true),
+});
+export type MenuCategoryInput = z.infer<typeof menuCategorySchema>;
+
+export const menuItemSchema = z.object({
+  categoryId: z.string().uuid(),
+  name: z.string().trim().min(1, "Enter a name").max(120, "Name is too long"),
+  description: optionalTrimmed(500),
+  price: optionalTrimmed(80),
+  isAvailable: z.boolean().default(true),
+  discountLabel: optionalTrimmed(80),
+  discountPrice: optionalTrimmed(80),
+  discountStartsAt: optionalDateTime(),
+  discountEndsAt: optionalDateTime(),
+});
+export type MenuItemInput = z.infer<typeof menuItemSchema>;
+
+export const menuOfferSchema = z.object({
+  title: z.string().trim().min(1, "Enter a title").max(120, "Title is too long"),
+  description: optionalTrimmed(500),
+  priceText: optionalTrimmed(80),
+  startsAt: optionalDateTime(),
+  endsAt: optionalDateTime(),
+  isActive: z.boolean().default(true),
+});
+export type MenuOfferInput = z.infer<typeof menuOfferSchema>;
 
 export const createCardSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("PROFILE") }).extend(profileDetailsSchema.shape),
-  z
-    .object({ type: z.literal("GOOGLE_REVIEW") })
-    .extend(googleReviewDetailsSchema.shape),
+  z.object({ type: z.literal("GOOGLE_REVIEW") }).extend(targetUrlSchema.shape),
+  z.object({ type: z.literal("INSTAPAY") }).extend(targetUrlSchema.shape),
+  z.object({ type: z.literal("ONLINE_CASH") }).extend(targetUrlSchema.shape),
+  z.object({ type: z.literal("STORE_PROFILE") }).extend(storeDetailsSchema.shape),
+  z.object({ type: z.literal("MULTIPLE_PAYMENT_METHODS") }).extend(paymentDetailsSchema.shape),
+  z.object({ type: z.literal("MENU") }).extend(menuDetailsSchema.shape),
 ]);
 export type CreateCardInput = z.infer<typeof createCardSchema>;
 
+/**
+ * The accent colour of a card's public page: any `#rrggbb` hex value.
+ * Normalised to lowercase so the stored value and the CSS variable are
+ * always the same string. Server Actions are public endpoints, so the
+ * regex is the actual write barrier — not just the picker's UI.
+ */
+export const cardThemeSchema = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Use a hex colour like #005CF2.")
+  .transform((value) => value.toLowerCase());
+export type CardThemeInput = z.infer<typeof cardThemeSchema>;
+
 export const cardListFiltersSchema = z.object({
   q: z.string().trim().max(120).optional(),
-  type: z.enum(["ALL", "PROFILE", "GOOGLE_REVIEW"]).default("ALL"),
+  type: z
+    .enum([
+      "ALL",
+      "PROFILE",
+      "GOOGLE_REVIEW",
+      "INSTAPAY",
+      "ONLINE_CASH",
+      "STORE_PROFILE",
+      "MULTIPLE_PAYMENT_METHODS",
+      "MENU",
+    ])
+    .default("ALL"),
   status: z.enum(["ALL", "ACTIVE", "INACTIVE"]).default("ALL"),
   page: z.coerce.number().int().min(1).default(1),
 });

@@ -3,9 +3,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCardDetailByUuid, type CardDetail } from "@/lib/data/cards";
-import { hashEditToken, editLinkExpiresAt } from "@/lib/cards/edit-links";
+import { hashEditToken, parseEditToken, editLinkExpiresAt } from "@/lib/cards/edit-links";
 
-export type EditSessionCard = Extract<CardDetail, { type: "PROFILE" }>;
+export type EditSessionCard = Extract<
+  CardDetail,
+  { type: "PROFILE" | "STORE_PROFILE" | "MULTIPLE_PAYMENT_METHODS" | "MENU" }
+>;
 
 export type EditSession =
   | { error: string }
@@ -13,10 +16,7 @@ export type EditSession =
 
 /**
  * Validates a raw edit token and returns a service-role client scoped to
- * its card. This runs before every customer edit action and is the only
- * authorization the customer side has — the token *is* the credential.
- * A token with no `expires_at` yet (created but never opened) is opened
- * here, so the 30-minute window starts on first use.
+ * its card. This runs before every customer edit action.
  */
 export async function resolveEditSession(token: string): Promise<EditSession> {
   const supabase = createAdminClient();
@@ -37,16 +37,17 @@ export async function resolveEditSession(token: string): Promise<EditSession> {
   const now = new Date();
   let expiresAt = link.expires_at;
 
-  if (!expiresAt) {
-    expiresAt = editLinkExpiresAt(now);
+  if (!link.opened_at) {
+    const { duration } = parseEditToken(token);
+    expiresAt = editLinkExpiresAt(now, duration);
     await supabase
       .from("card_edit_links")
       .update({
-        opened_at: link.opened_at ?? now.toISOString(),
+        opened_at: now.toISOString(),
         expires_at: expiresAt,
       })
       .eq("token_hash", tokenHash);
-  } else if (new Date(expiresAt).getTime() <= now.getTime()) {
+  } else if (expiresAt && new Date(expiresAt).getTime() <= now.getTime()) {
     return { error: "This edit link has expired." };
   }
 
@@ -57,12 +58,11 @@ export type OpenEditSessionResult =
   | { status: "invalid" }
   | { status: "closed" }
   | { status: "expired" }
-  | { status: "open"; card: EditSessionCard; expiresAt: string };
+  | { status: "open"; card: EditSessionCard; expiresAt: string | null };
 
 /**
- * Reads (and, on first view, starts) an edit session for the page
- * render. Distinct from resolveEditSession() only in that it returns a
- * status for the UI rather than an action-scoped client.
+ * Reads (and, on first view, records opened_at and calculates expires_at if applicable)
+ * an edit session for the page render.
  */
 export async function openEditSession(
   token: string,
@@ -82,29 +82,36 @@ export async function openEditSession(
   const now = new Date();
   let expiresAt = link.expires_at;
 
-  if (!expiresAt) {
-    expiresAt = editLinkExpiresAt(now);
+  if (!link.opened_at) {
+    const { duration } = parseEditToken(token);
+    expiresAt = editLinkExpiresAt(now, duration);
     const { error } = await supabase
       .from("card_edit_links")
       .update({
-        opened_at: link.opened_at ?? now.toISOString(),
+        opened_at: now.toISOString(),
         expires_at: expiresAt,
       })
       .eq("id", link.id);
     if (error) return { status: "invalid" };
-  } else if (new Date(expiresAt).getTime() <= now.getTime()) {
+  } else if (expiresAt && new Date(expiresAt).getTime() <= now.getTime()) {
     return { status: "expired" };
   }
 
   const card = await getCardDetailByUuid(supabase, link.card_id);
-  if (!card || card.type !== "PROFILE") return { status: "invalid" };
+  if (!card) return { status: "invalid" };
+  if (
+    card.type !== "PROFILE" &&
+    card.type !== "STORE_PROFILE" &&
+    card.type !== "MULTIPLE_PAYMENT_METHODS" &&
+    card.type !== "MENU"
+  ) {
+    return { status: "invalid" };
+  }
 
   return { status: "open", card, expiresAt };
 }
 
-/** Ends the window early — the customer's "save and close". Idempotent:
- * an already-closed or expired link still reports success to the caller,
- * since the end state is the same. */
+/** Ends the window early — the customer's "save and close". */
 export async function closeEditSession(token: string): Promise<{ error?: string }> {
   const supabase = createAdminClient();
   const tokenHash = hashEditToken(token);
@@ -117,6 +124,12 @@ export async function closeEditSession(token: string): Promise<{ error?: string 
 
   if (!link) return { error: "This edit link isn't valid." };
   if (link.closed_at) return {};
+
+  // If the link has "forever" duration, keep it open — just save any
+  // changes and let the user re-access the link later. For temporary
+  // durations (1 day / 1 hour / 30 min), close the link as usual.
+  const { duration } = parseEditToken(token);
+  if (duration === "forever") return {};
 
   const { error } = await supabase
     .from("card_edit_links")

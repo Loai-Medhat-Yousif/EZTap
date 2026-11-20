@@ -27,6 +27,11 @@ function toTemplate(row: PrintTemplateRow): PrintTemplate | null {
     qrX: Number(row.qr_x),
     qrY: Number(row.qr_y),
     qrSize: Number(row.qr_size),
+    qrRotationDeg: (() => {
+      const value = Number(row.qr_rotation_deg);
+      if (!Number.isFinite(value)) return 0;
+      return Math.min(360, Math.max(0, value));
+    })(),
   };
 }
 
@@ -45,6 +50,12 @@ export async function getPrintTemplates(): Promise<
   const templates = {
     profile: defaultPrintTemplate("profile"),
     google_review: defaultPrintTemplate("google_review"),
+    instapay: defaultPrintTemplate("instapay"),
+    online_cash: defaultPrintTemplate("online_cash"),
+    store_profile: defaultPrintTemplate("store_profile"),
+    multiple_payment_methods: defaultPrintTemplate("multiple_payment_methods"),
+    menu: defaultPrintTemplate("menu"),
+    menu_alt: defaultPrintTemplate("menu_alt"),
   } satisfies Record<PrintTemplateKind, PrintTemplate>;
 
   for (const row of data ?? []) {

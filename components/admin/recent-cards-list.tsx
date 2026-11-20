@@ -1,9 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import type { RecentCard } from "@/lib/data/cards";
+import { CARD_TYPE_LABEL_KEY } from "@/lib/cards/type-labels";
 import { cn } from "@/lib/utils";
 
 export async function RecentCardsList({ cards }: { cards: RecentCard[] }) {
   const t = await getTranslations("dashboard");
+  const tCards = await getTranslations("cards");
 
   if (cards.length === 0) {
     return <p className="text-sm text-muted">{t("noCardsYet")}</p>;
@@ -18,9 +20,12 @@ export async function RecentCardsList({ cards }: { cards: RecentCard[] }) {
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-ink">
-              {card.type === "PROFILE"
-                ? card.profileFullName || t("unnamedProfile")
-                : t("cardTypeGoogleReview")}
+              {card.profileFullName ||
+                (card.type === "PROFILE" ||
+                card.type === "STORE_PROFILE" ||
+                card.type === "MULTIPLE_PAYMENT_METHODS"
+                  ? t("unnamedProfile")
+                  : tCards(CARD_TYPE_LABEL_KEY[card.type]))}
             </p>
             <p className="font-mono text-xs text-muted">{card.card_id}</p>
           </div>

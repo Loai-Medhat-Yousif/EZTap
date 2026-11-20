@@ -142,13 +142,13 @@ export function PurchasesManager({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
-                <th className="py-2 pr-4">{t("purchaseColumnDate")}</th>
-                <th className="py-2 pr-4">{t("purchaseColumnQuantity")}</th>
-                <th className="py-2 pr-4">{t("purchaseColumnUnit")}</th>
-                <th className="py-2 pr-4">{t("purchaseColumnCost")}</th>
-                <th className="py-2 pr-4">{t("purchaseColumnNote")}</th>
-                <th className="py-2 pr-4" />
+              <tr className="border-b border-border text-start text-xs uppercase tracking-wide text-muted">
+                <th className="py-2 pe-4">{t("purchaseColumnDate")}</th>
+                <th className="py-2 pe-4">{t("purchaseColumnQuantity")}</th>
+                <th className="py-2 pe-4">{t("purchaseColumnUnit")}</th>
+                <th className="py-2 pe-4">{t("purchaseColumnCost")}</th>
+                <th className="py-2 pe-4">{t("purchaseColumnNote")}</th>
+                <th className="py-2 pe-4" />
               </tr>
             </thead>
             <tbody>
@@ -159,20 +159,20 @@ export function PurchasesManager({
                     : 0;
                 return (
                   <tr key={purchase.id} className="border-b border-border/60">
-                    <td className="py-2 pr-4 text-ink">
+                    <td className="py-2 pe-4 text-ink">
                       {dateFormatter.format(new Date(`${purchase.purchasedOn}T00:00:00`))}
                     </td>
-                    <td className="py-2 pr-4 font-mono tabular-nums text-ink">
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
                       {purchase.quantity}
                     </td>
-                    <td className="py-2 pr-4 font-mono tabular-nums text-muted">
+                    <td className="py-2 pe-4 font-mono tabular-nums text-muted">
                       {money.format(unitCost)}
                     </td>
-                    <td className="py-2 pr-4 font-mono tabular-nums text-ink">
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
                       {money.format(purchase.totalCost)}
                     </td>
-                    <td className="py-2 pr-4 text-muted">{purchase.note ?? "—"}</td>
-                    <td className="py-2 pr-4 text-right">
+                    <td className="py-2 pe-4 text-muted">{purchase.note ?? "—"}</td>
+                    <td className="py-2 pe-4 text-end">
                       <button
                         type="button"
                         onClick={() => handleDelete(purchase.id)}

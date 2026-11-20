@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAdminContext } from "@/lib/auth/require-admin";
 import { Sidebar } from "@/components/admin/sidebar";
-import { MobileNav } from "@/components/admin/mobile-nav";
 import { Topbar } from "@/components/admin/topbar";
 
 export const metadata = {
@@ -30,7 +29,6 @@ export default async function AdminLayout({
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar userEmail={user.email} />
-        <MobileNav />
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>
     </div>

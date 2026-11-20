@@ -55,10 +55,15 @@ function newProfileImagePath(cardUuid: string): string {
   return `${cardUuid}/avatar-${Date.now()}`;
 }
 
-export async function uploadProfileImage(
+function newCardImagePath(cardUuid: string, prefix: string): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `${cardUuid}/${prefix}-${Date.now()}-${rand}`;
+}
+
+async function uploadImageBytes(
   supabase: SupabaseClient<Database>,
-  cardUuid: string,
   file: File,
+  path: string,
 ): Promise<{ path: string } | { error: ImageValidationError }> {
   // Size first, from the declared length, so an oversized file is
   // rejected before being read into memory.
@@ -67,8 +72,6 @@ export async function uploadProfileImage(
   const bytes = new Uint8Array(await file.arrayBuffer());
   const contentType = detectImageType(bytes);
   if (!contentType) return { error: "type" };
-
-  const path = newProfileImagePath(cardUuid);
 
   const { error } = await supabase.storage
     .from(PROFILE_IMAGE_BUCKET)
@@ -80,6 +83,24 @@ export async function uploadProfileImage(
 
   if (error) throw error;
   return { path };
+}
+
+export async function uploadProfileImage(
+  supabase: SupabaseClient<Database>,
+  cardUuid: string,
+  file: File,
+): Promise<{ path: string } | { error: ImageValidationError }> {
+  return uploadImageBytes(supabase, file, newProfileImagePath(cardUuid));
+}
+
+/** Uploads an image for a menu item or offer (same bucket/limits as avatars). */
+export async function uploadMenuImage(
+  supabase: SupabaseClient<Database>,
+  cardUuid: string,
+  file: File,
+  kind: "menu-item" | "menu-offer",
+): Promise<{ path: string } | { error: ImageValidationError }> {
+  return uploadImageBytes(supabase, file, newCardImagePath(cardUuid, kind));
 }
 
 export async function deleteProfileImage(
@@ -97,6 +118,15 @@ export async function deleteProfileImage(
     .remove([path]);
 
   if (error) throw error;
+}
+
+/** Deletes a menu item/offer image (same safety rules as profile images). */
+export async function deleteMenuImage(
+  supabase: SupabaseClient<Database>,
+  cardUuid: string,
+  path: string,
+): Promise<void> {
+  return deleteProfileImage(supabase, cardUuid, path);
 }
 
 export function getProfileImagePublicUrl(

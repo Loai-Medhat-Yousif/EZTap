@@ -45,7 +45,19 @@ export async function POST(request: Request) {
   const { error } = await createAdminClient().rpc("record_analytics_event", {
     p_card_id: event.cardId,
     p_event_type: event.type,
-    p_profile_link_id: event.type === "LINK_CLICK" ? event.linkId : null,
+    p_profile_link_id:
+      event.type === "LINK_CLICK" &&
+      (event.linkKind === "profile" || event.linkKind === undefined)
+        ? event.linkId
+        : null,
+    p_store_link_id:
+      event.type === "LINK_CLICK" && event.linkKind === "store"
+        ? event.linkId
+        : null,
+    p_payment_link_id:
+      event.type === "LINK_CLICK" && event.linkKind === "payment"
+        ? event.linkId
+        : null,
     p_device_category: getDeviceCategoryFromUserAgent(
       request.headers.get("user-agent"),
     ),

@@ -3,7 +3,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileImagePublicUrl } from "@/lib/storage/profile-images";
 import type { Database } from "@/types/database";
-import type { Card, CardStatus, CardType, Profile, ProfileLink } from "@/types";
+import type {
+  Card,
+  CardStatus,
+  CardTheme,
+  CardType,
+  MenuCategory,
+  MenuItem,
+  MenuOffer,
+  MenuProfile,
+  PaymentLink,
+  PaymentProfile,
+  Profile,
+  ProfileLink,
+  RedirectCardType,
+  StoreLink,
+  StoreProfile,
+} from "@/types";
+import { isRedirectCardType } from "@/types";
 
 export type CardStats = {
   total: number;
@@ -72,6 +89,21 @@ export async function getRecentCards(limit = 5): Promise<RecentCard[]> {
   const profileCardUuids = cards
     .filter((card): card is Card & { type: "PROFILE" } => card.type === "PROFILE")
     .map((card) => card.id);
+  const storeCardUuids = cards
+    .filter(
+      (card): card is Card & { type: "STORE_PROFILE" } =>
+        card.type === "STORE_PROFILE",
+    )
+    .map((card) => card.id);
+  const paymentCardUuids = cards
+    .filter(
+      (card): card is Card & { type: "MULTIPLE_PAYMENT_METHODS" } =>
+        card.type === "MULTIPLE_PAYMENT_METHODS",
+    )
+    .map((card) => card.id);
+  const menuCardUuids = cards
+    .filter((card): card is Card & { type: "MENU" } => card.type === "MENU")
+    .map((card) => card.id);
 
   const namesByCardUuid = new Map<string, string>();
 
@@ -88,6 +120,45 @@ export async function getRecentCards(limit = 5): Promise<RecentCard[]> {
     }
   }
 
+  if (storeCardUuids.length > 0) {
+    const { data: stores, error: storesError } = await supabase
+      .from("store_profiles")
+      .select("card_id, full_name")
+      .in("card_id", storeCardUuids);
+
+    if (storesError) throw storesError;
+
+    for (const store of stores ?? []) {
+      namesByCardUuid.set(store.card_id, store.full_name);
+    }
+  }
+
+  if (paymentCardUuids.length > 0) {
+    const { data: payments, error: paymentsError } = await supabase
+      .from("payment_profiles")
+      .select("card_id, full_name")
+      .in("card_id", paymentCardUuids);
+
+    if (paymentsError) throw paymentsError;
+
+    for (const payment of payments ?? []) {
+      namesByCardUuid.set(payment.card_id, payment.full_name);
+    }
+  }
+
+  if (menuCardUuids.length > 0) {
+    const { data: menus, error: menusError } = await supabase
+      .from("menu_profiles")
+      .select("card_id, full_name")
+      .in("card_id", menuCardUuids);
+
+    if (menusError) throw menusError;
+
+    for (const menu of menus ?? []) {
+      namesByCardUuid.set(menu.card_id, menu.full_name);
+    }
+  }
+
   return cards.map((card) => ({
     id: card.id,
     card_id: card.card_id,
@@ -100,32 +171,76 @@ export async function getRecentCards(limit = 5): Promise<RecentCard[]> {
 
 export type CardDetail =
   | {
-      type: "GOOGLE_REVIEW";
+      type: RedirectCardType;
       id: string;
       card_id: string;
       status: CardStatus;
+      theme: CardTheme;
       created_at: string;
       price_egp: number | null;
       sold_at: string | null;
-      google_review_url: string;
+      target_url: string;
     }
   | {
       type: "PROFILE";
       id: string;
       card_id: string;
       status: CardStatus;
+      theme: CardTheme;
       created_at: string;
       price_egp: number | null;
       sold_at: string | null;
       profile: Profile | null;
       profileImageUrl: string | null;
       links: ProfileLink[];
+    }
+  | {
+      type: "STORE_PROFILE";
+      id: string;
+      card_id: string;
+      status: CardStatus;
+      theme: CardTheme;
+      created_at: string;
+      price_egp: number | null;
+      sold_at: string | null;
+      store: StoreProfile | null;
+      storeImageUrl: string | null;
+      links: StoreLink[];
+    }
+  | {
+      type: "MULTIPLE_PAYMENT_METHODS";
+      id: string;
+      card_id: string;
+      status: CardStatus;
+      theme: CardTheme;
+      created_at: string;
+      price_egp: number | null;
+      sold_at: string | null;
+      payment: PaymentProfile | null;
+      paymentImageUrl: string | null;
+      links: PaymentLink[];
+    }
+  | {
+      type: "MENU";
+      id: string;
+      card_id: string;
+      status: CardStatus;
+      theme: CardTheme;
+      created_at: string;
+      price_egp: number | null;
+      sold_at: string | null;
+      menu: MenuProfile | null;
+      menuImageUrl: string | null;
+      categories: Array<MenuCategory & { items: MenuItem[] }>;
+      offers: MenuOffer[];
     };
 
-/** Full detail for the card edit page — the profile row (if any) is
- * loaded whole, since the profile editor needs every field, along with
- * every link (active and inactive — the admin manages both) and the
- * photo's public URL. */
+export type MenuCategoryWithItems = MenuCategory & { items: MenuItem[] };
+
+/** Full detail for the card edit page — the profile/store/payment/menu row
+ * (if any) is loaded whole, since the editor needs every field, along with
+ * managed child records (links/categories/items/offers, including inactive
+ * or expired ones) and image public URLs. */
 export async function getCardDetail(cardId: string): Promise<CardDetail | null> {
   const supabase = await createClient();
   return loadCardDetail(supabase, "card_id", cardId);
@@ -149,7 +264,7 @@ async function loadCardDetail(
   const { data: card, error } = await supabase
     .from("cards")
     .select(
-      "id, card_id, type, status, created_at, google_review_url, price_egp, sold_at",
+      "id, card_id, type, status, theme, created_at, target_url, price_egp, sold_at",
     )
     .eq(column, value)
     .maybeSingle();
@@ -157,18 +272,165 @@ async function loadCardDetail(
   if (error) throw error;
   if (!card) return null;
 
-  if (card.type === "GOOGLE_REVIEW") {
+  if (isRedirectCardType(card.type)) {
     return {
-      type: "GOOGLE_REVIEW",
+      type: card.type,
       id: card.id,
       card_id: card.card_id,
       status: card.status,
+      theme: card.theme,
       created_at: card.created_at,
       price_egp: card.price_egp,
       sold_at: card.sold_at,
-      // Guaranteed non-null by the google_review_url_matches_card_type
-      // CHECK constraint for this card type.
-      google_review_url: card.google_review_url as string,
+      // Guaranteed non-null by the target_url_matches_card_type CHECK
+      // constraint for every redirect type.
+      target_url: card.target_url as string,
+    };
+  }
+
+  if (card.type === "STORE_PROFILE") {
+    const { data: store, error: storeError } = await supabase
+      .from("store_profiles")
+      .select("*")
+      .eq("card_id", card.id)
+      .maybeSingle();
+
+    if (storeError) throw storeError;
+
+    let storeLinks: StoreLink[] = [];
+    if (store) {
+      const { data: linkRows, error: linksError } = await supabase
+        .from("store_links")
+        .select("*")
+        .eq("store_profile_id", store.id)
+        .order("sort_order", { ascending: true });
+
+      if (linksError) throw linksError;
+      storeLinks = linkRows ?? [];
+    }
+
+    return {
+      type: "STORE_PROFILE",
+      id: card.id,
+      card_id: card.card_id,
+      status: card.status,
+      theme: card.theme,
+      created_at: card.created_at,
+      price_egp: card.price_egp,
+      sold_at: card.sold_at,
+      store: store ?? null,
+      storeImageUrl: store?.store_image_path
+        ? getProfileImagePublicUrl(supabase, store.store_image_path)
+        : null,
+      links: storeLinks,
+    };
+  }
+
+  if (card.type === "MULTIPLE_PAYMENT_METHODS") {
+    const { data: payment, error: paymentError } = await supabase
+      .from("payment_profiles")
+      .select("*")
+      .eq("card_id", card.id)
+      .maybeSingle();
+
+    if (paymentError) throw paymentError;
+
+    let paymentLinks: PaymentLink[] = [];
+    if (payment) {
+      const { data: linkRows, error: linksError } = await supabase
+        .from("payment_links")
+        .select("*")
+        .eq("payment_profile_id", payment.id)
+        .order("sort_order", { ascending: true });
+
+      if (linksError) throw linksError;
+      paymentLinks = linkRows ?? [];
+    }
+
+    return {
+      type: "MULTIPLE_PAYMENT_METHODS",
+      id: card.id,
+      card_id: card.card_id,
+      status: card.status,
+      theme: card.theme,
+      created_at: card.created_at,
+      price_egp: card.price_egp,
+      sold_at: card.sold_at,
+      payment: payment ?? null,
+      paymentImageUrl: payment?.payment_image_path
+        ? getProfileImagePublicUrl(supabase, payment.payment_image_path)
+        : null,
+      links: paymentLinks,
+    };
+  }
+
+  if (card.type === "MENU") {
+    const { data: menu, error: menuError } = await supabase
+      .from("menu_profiles")
+      .select("*")
+      .eq("card_id", card.id)
+      .maybeSingle();
+
+    if (menuError) throw menuError;
+
+    let categories: Array<MenuCategory & { items: MenuItem[] }> = [];
+    let offers: MenuOffer[] = [];
+    if (menu) {
+      const { data: categoryRows, error: categoriesError } = await supabase
+        .from("menu_categories")
+        .select("*")
+        .eq("menu_profile_id", menu.id)
+        .order("sort_order", { ascending: true });
+      if (categoriesError) throw categoriesError;
+
+      const catRows = categoryRows ?? [];
+      const categoryIds = catRows.map((c) => c.id);
+      let itemRows: MenuItem[] = [];
+      if (categoryIds.length > 0) {
+        const { data: items, error: itemsError } = await supabase
+          .from("menu_items")
+          .select("*")
+          .in("category_id", categoryIds)
+          .order("sort_order", { ascending: true });
+        if (itemsError) throw itemsError;
+        itemRows = items ?? [];
+      }
+
+      const itemsByCategory = new Map<string, MenuItem[]>();
+      for (const item of itemRows) {
+        const list = itemsByCategory.get(item.category_id) ?? [];
+        list.push(item);
+        itemsByCategory.set(item.category_id, list);
+      }
+      categories = catRows.map((cat) => ({
+        ...cat,
+        items: itemsByCategory.get(cat.id) ?? [],
+      }));
+
+      const { data: offerRows, error: offersError } = await supabase
+        .from("menu_offers")
+        .select("*")
+        .eq("menu_profile_id", menu.id)
+        .order("sort_order", { ascending: true });
+      if (offersError) throw offersError;
+      offers = offerRows ?? [];
+    }
+
+    return {
+      type: "MENU",
+      id: card.id,
+      card_id: card.card_id,
+      status: card.status,
+      theme: card.theme,
+      created_at: card.created_at,
+      price_egp: card.price_egp,
+      sold_at: card.sold_at,
+      menu: menu ?? null,
+      menuImageUrl: menu?.menu_image_path
+        ? getProfileImagePublicUrl(supabase, menu.menu_image_path)
+        : null,
+      categories,
+      offers,
     };
   }
 
@@ -202,6 +464,7 @@ async function loadCardDetail(
     id: card.id,
     card_id: card.card_id,
     status: card.status,
+    theme: card.theme,
     created_at: card.created_at,
     price_egp: card.price_egp,
     sold_at: card.sold_at,
@@ -218,7 +481,7 @@ export type CardListRow = {
   status: CardStatus;
   created_at: string;
   profileFullName: string | null;
-  googleReviewUrl: string | null;
+  targetUrl: string | null;
   viewCount: number;
   clickCount: number;
 };
@@ -256,7 +519,7 @@ export async function listCards(filters: {
     status: row.status,
     created_at: row.created_at,
     profileFullName: row.profile_full_name,
-    googleReviewUrl: row.google_review_url,
+    targetUrl: row.target_url,
     viewCount: Number(row.view_count),
     clickCount: Number(row.click_count),
   }));

@@ -55,14 +55,14 @@ npx supabase link --project-ref <your-project-ref>   # found in the project's Se
 npx supabase db push
 ```
 
-This applies all 16 migration files in order. You should see each one
-listed as applied with no errors.
+This applies every migration file in `supabase/migrations/` in order.
+You should see each one listed as applied with no errors.
 
 **Without the CLI:** open the Supabase dashboard's **SQL Editor**, and
 run each file in `supabase/migrations/` in filename order (they're
 timestamp-prefixed, so sorting alphabetically is sorting chronologically).
-Paste one file's contents, run it, confirm no errors, move to the next.
-Sixteen files, a couple of minutes total.
+Paste one file's contents, run it, confirm no errors, move to the next —
+a couple of minutes total.
 
 > **Already deployed before the two-template change?** The Statistics page
 > returns an error until migration `20260927000100_print_templates_and_income_period.sql`
@@ -71,11 +71,13 @@ Sixteen files, a couple of minutes total.
 > the SQL Editor; it preserves the existing design as the `profile` template.
 
 Either way, when it's done, **Table Editor** should show `cards`,
-`profiles`, `profile_links`, `card_edit_links`, `card_purchases`,
-`analytics_events`, and `rate_limits`. The `cards` table should also have
-`price_egp` and `sold_at` columns (added by the income/edit-link
-migration), and `card_purchases` holds the buy-receipt rows that drive
-the Statistics page's stock and profit figures.
+`profiles`, `profile_links`, `store_profiles`, `store_links`,
+`card_edit_links`, `card_purchases`, `analytics_events`, `print_template`,
+`social_links`, `site_settings`, and `rate_limits`. The `cards` table
+should have `price_egp`, `sold_at` and `target_url` columns (the
+income/edit-link/new-card-types migrations added them), and
+`card_purchases` holds the buy-receipt rows that drive the Statistics
+page's stock and profit figures.
 
 ## Step 3 — Configure Authentication
 

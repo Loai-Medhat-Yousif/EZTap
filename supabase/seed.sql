@@ -30,7 +30,7 @@ cross join (values
 ) as v(icon, title, url, sort_order)
 where p.card_id = (select id from cards where card_id = '482731');
 
-insert into cards (card_id, type, status, google_review_url)
+insert into cards (card_id, type, status, target_url)
 values ('913042', 'GOOGLE_REVIEW', 'ACTIVE', 'https://g.page/r/example-business/review')
 on conflict (card_id) do nothing;
 

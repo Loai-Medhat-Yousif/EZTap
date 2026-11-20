@@ -20,13 +20,228 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      menu_profiles: {
+        Row: {
+          id: string;
+          card_id: string;
+          menu_image_path: string | null;
+          print_template_kind: string;
+          full_name: string;
+          category: string | null;
+          bio: string | null;
+          phone: string | null;
+          whatsapp: string | null;
+          email: string | null;
+          website: string | null;
+          google_maps_url: string | null;
+          address: string | null;
+          opening_hours: string | null;
+          google_review_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          card_id: string;
+          menu_image_path?: string | null;
+          print_template_kind?: string;
+          full_name: string;
+          category?: string | null;
+          bio?: string | null;
+          phone?: string | null;
+          whatsapp?: string | null;
+          email?: string | null;
+          website?: string | null;
+          google_maps_url?: string | null;
+          address?: string | null;
+          opening_hours?: string | null;
+          google_review_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          card_id?: string;
+          menu_image_path?: string | null;
+          print_template_kind?: string;
+          full_name?: string;
+          category?: string | null;
+          bio?: string | null;
+          phone?: string | null;
+          whatsapp?: string | null;
+          email?: string | null;
+          website?: string | null;
+          google_maps_url?: string | null;
+          address?: string | null;
+          opening_hours?: string | null;
+          google_review_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "menu_profiles_card_id_fkey";
+            columns: ["card_id"];
+            referencedRelation: "cards";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      menu_categories: {
+        Row: {
+          id: string;
+          menu_profile_id: string;
+          name: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          menu_profile_id: string;
+          name: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          menu_profile_id?: string;
+          name?: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "menu_categories_menu_profile_id_fkey";
+            columns: ["menu_profile_id"];
+            referencedRelation: "menu_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      menu_items: {
+        Row: {
+          id: string;
+          category_id: string;
+          name: string;
+          description: string | null;
+          price: string | null;
+          image_path: string | null;
+          is_available: boolean;
+          sort_order: number;
+          discount_label: string | null;
+          discount_price: string | null;
+          discount_starts_at: string | null;
+          discount_ends_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          category_id: string;
+          name: string;
+          description?: string | null;
+          price?: string | null;
+          image_path?: string | null;
+          is_available?: boolean;
+          sort_order?: number;
+          discount_label?: string | null;
+          discount_price?: string | null;
+          discount_starts_at?: string | null;
+          discount_ends_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          category_id?: string;
+          name?: string;
+          description?: string | null;
+          price?: string | null;
+          image_path?: string | null;
+          is_available?: boolean;
+          sort_order?: number;
+          discount_label?: string | null;
+          discount_price?: string | null;
+          discount_starts_at?: string | null;
+          discount_ends_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_category_id_fkey";
+            columns: ["category_id"];
+            referencedRelation: "menu_categories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      menu_offers: {
+        Row: {
+          id: string;
+          menu_profile_id: string;
+          title: string;
+          description: string | null;
+          image_path: string | null;
+          price_text: string | null;
+          starts_at: string | null;
+          ends_at: string | null;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          menu_profile_id: string;
+          title: string;
+          description?: string | null;
+          image_path?: string | null;
+          price_text?: string | null;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          menu_profile_id?: string;
+          title?: string;
+          description?: string | null;
+          image_path?: string | null;
+          price_text?: string | null;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "menu_offers_menu_profile_id_fkey";
+            columns: ["menu_profile_id"];
+            referencedRelation: "menu_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       cards: {
         Row: {
           id: string;
           card_id: string;
           type: Database["public"]["Enums"]["card_type"];
           status: Database["public"]["Enums"]["card_status"];
-          google_review_url: string | null;
+          theme: string;
+          target_url: string | null;
           price_egp: number | null;
           sold_at: string | null;
           created_at: string;
@@ -37,7 +252,8 @@ export type Database = {
           card_id: string;
           type: Database["public"]["Enums"]["card_type"];
           status?: Database["public"]["Enums"]["card_status"];
-          google_review_url?: string | null;
+          theme?: string;
+          target_url?: string | null;
           price_egp?: number | null;
           sold_at?: string | null;
           created_at?: string;
@@ -48,7 +264,8 @@ export type Database = {
           card_id?: string;
           type?: Database["public"]["Enums"]["card_type"];
           status?: Database["public"]["Enums"]["card_status"];
-          google_review_url?: string | null;
+          theme?: string;
+          target_url?: string | null;
           price_egp?: number | null;
           sold_at?: string | null;
           created_at?: string;
@@ -191,6 +408,7 @@ export type Database = {
           qr_x: number;
           qr_y: number;
           qr_size: number;
+          qr_rotation_deg: number;
           updated_at: string;
         };
         Insert: {
@@ -205,6 +423,7 @@ export type Database = {
           qr_x?: number;
           qr_y?: number;
           qr_size?: number;
+          qr_rotation_deg?: number;
           updated_at?: string;
         };
         Update: {
@@ -219,6 +438,7 @@ export type Database = {
           qr_x?: number;
           qr_y?: number;
           qr_size?: number;
+          qr_rotation_deg?: number;
           updated_at?: string;
         };
         Relationships: [];
@@ -266,11 +486,200 @@ export type Database = {
           },
         ];
       };
+      store_profiles: {
+        Row: {
+          id: string;
+          card_id: string;
+          store_image_path: string | null;
+          full_name: string;
+          category: string | null;
+          bio: string | null;
+          phone: string | null;
+          whatsapp: string | null;
+          email: string | null;
+          website: string | null;
+          google_maps_url: string | null;
+          address: string | null;
+          opening_hours: string | null;
+          google_review_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          card_id: string;
+          store_image_path?: string | null;
+          full_name: string;
+          category?: string | null;
+          bio?: string | null;
+          phone?: string | null;
+          whatsapp?: string | null;
+          email?: string | null;
+          website?: string | null;
+          google_maps_url?: string | null;
+          address?: string | null;
+          opening_hours?: string | null;
+          google_review_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          card_id?: string;
+          store_image_path?: string | null;
+          full_name?: string;
+          category?: string | null;
+          bio?: string | null;
+          phone?: string | null;
+          whatsapp?: string | null;
+          email?: string | null;
+          website?: string | null;
+          google_maps_url?: string | null;
+          address?: string | null;
+          opening_hours?: string | null;
+          google_review_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "store_profiles_card_id_fkey";
+            columns: ["card_id"];
+            referencedRelation: "cards";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payment_profiles: {
+        Row: {
+          id: string;
+          card_id: string;
+          payment_image_path: string | null;
+          full_name: string;
+          bio: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          card_id: string;
+          payment_image_path?: string | null;
+          full_name: string;
+          bio?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          card_id?: string;
+          payment_image_path?: string | null;
+          full_name?: string;
+          bio?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payment_profiles_card_id_fkey";
+            columns: ["card_id"];
+            referencedRelation: "cards";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payment_links: {
+        Row: {
+          id: string;
+          payment_profile_id: string;
+          icon: string;
+          title: string;
+          url: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          payment_profile_id: string;
+          icon: string;
+          title: string;
+          url: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          payment_profile_id?: string;
+          icon?: string;
+          title?: string;
+          url?: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_payment_profile_id_fkey";
+            columns: ["payment_profile_id"];
+            referencedRelation: "payment_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      store_links: {
+        Row: {
+          id: string;
+          store_profile_id: string;
+          icon: string;
+          title: string;
+          url: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          store_profile_id: string;
+          icon: string;
+          title: string;
+          url: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          store_profile_id?: string;
+          icon?: string;
+          title?: string;
+          url?: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "store_links_store_profile_id_fkey";
+            columns: ["store_profile_id"];
+            referencedRelation: "store_profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       analytics_events: {
         Row: {
           id: string;
           card_id: string;
           profile_link_id: string | null;
+          store_link_id: string | null;
+          payment_link_id: string | null;
           event_type: Database["public"]["Enums"]["analytics_event_type"];
           device_category: string | null;
           browser: string | null;
@@ -282,6 +691,8 @@ export type Database = {
           id?: string;
           card_id: string;
           profile_link_id?: string | null;
+          store_link_id?: string | null;
+          payment_link_id?: string | null;
           event_type: Database["public"]["Enums"]["analytics_event_type"];
           device_category?: string | null;
           browser?: string | null;
@@ -293,6 +704,8 @@ export type Database = {
           id?: string;
           card_id?: string;
           profile_link_id?: string | null;
+          store_link_id?: string | null;
+          payment_link_id?: string | null;
           event_type?: Database["public"]["Enums"]["analytics_event_type"];
           device_category?: string | null;
           browser?: string | null;
@@ -313,7 +726,70 @@ export type Database = {
             referencedRelation: "profile_links";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "analytics_events_store_link_id_fkey";
+            columns: ["store_link_id"];
+            referencedRelation: "store_links";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "analytics_events_payment_link_id_fkey";
+            columns: ["payment_link_id"];
+            referencedRelation: "payment_links";
+            referencedColumns: ["id"];
+          },
         ];
+      };
+      social_links: {
+        Row: {
+          id: string;
+          icon: string;
+          label: string;
+          url: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          icon: string;
+          label: string;
+          url: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          icon?: string;
+          label?: string;
+          url?: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      site_settings: {
+        Row: {
+          id: number;
+          make_your_own_url: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          make_your_own_url?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          make_your_own_url?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -332,20 +808,32 @@ export type Database = {
         Args: { p_card_id: string };
         Returns: Json;
       };
-      // Public (anon + authenticated) — the sole write path for visitor
-      // interaction tracking. Never throws for a bad/foreign id; it
-      // just drops the event, so callers can fire-and-forget it.
+      // Service-role only (revoked from anon/authenticated by the
+      // security-hardening migration) — the sole write path for visitor
+      // interaction tracking, reached through the app's /api/track
+      // endpoint and the server-side view recorder. Never throws for a
+      // bad/foreign id; it just drops the event, so callers can
+      // fire-and-forget it.
       record_analytics_event: {
         Args: {
           p_card_id: string;
           p_event_type: Database["public"]["Enums"]["analytics_event_type"];
           p_profile_link_id?: string | null;
+          p_store_link_id?: string | null;
+          p_payment_link_id?: string | null;
           p_device_category?: string | null;
           p_browser?: string | null;
           p_os?: string | null;
           p_referrer?: string | null;
         };
         Returns: undefined;
+      };
+      // Public (anon + authenticated) — the global footer's social links
+      // and "Want to make your own?" target. SECURITY DEFINER, so anon
+      // never needs a grant on social_links / site_settings themselves.
+      get_public_site_footer: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
       };
       // True when the caller's JWT carries app_metadata.role = "admin".
       // What every RLS policy and storage policy is gated on.
@@ -441,7 +929,7 @@ export type Database = {
           status: Database["public"]["Enums"]["card_status"];
           created_at: string;
           profile_full_name: string | null;
-          google_review_url: string | null;
+          target_url: string | null;
           view_count: number;
           click_count: number;
           total_count: number;
@@ -509,9 +997,30 @@ export type Database = {
           cards_sold: number;
         }[];
       };
+      // Admin-only — per-type business summary (zero-filled across all
+      // five card types): total created, active, sold, unsold and the
+      // revenue each type's sales brought in.
+      admin_card_type_summary: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          card_type: string;
+          total: number;
+          active: number;
+          sold: number;
+          unsold: number;
+          revenue: number;
+        }[];
+      };
     };
     Enums: {
-      card_type: "PROFILE" | "GOOGLE_REVIEW";
+      card_type:
+        | "PROFILE"
+        | "GOOGLE_REVIEW"
+        | "INSTAPAY"
+        | "ONLINE_CASH"
+        | "STORE_PROFILE"
+        | "MULTIPLE_PAYMENT_METHODS"
+        | "MENU";
       card_status: "ACTIVE" | "INACTIVE";
       analytics_event_type:
         | "VIEW"
@@ -522,7 +1031,8 @@ export type Database = {
         | "WEBSITE_CLICK"
         | "MAPS_CLICK"
         | "SHARE_CLICK"
-        | "SAVE_CONTACT_CLICK";
+        | "SAVE_CONTACT_CLICK"
+        | "REVIEW_CLICK";
     };
     CompositeTypes: Record<string, never>;
   };

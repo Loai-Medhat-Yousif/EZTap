@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import QRCode from "qrcode";
-import { Upload, Trash2, Printer, Save } from "lucide-react";
+import { Upload, Trash2, Save } from "lucide-react";
 import {
   PRINT_TEMPLATE_KINDS,
   pageAspectRatio,
@@ -212,6 +212,7 @@ export function PrintTemplateEditor({
         qrX: config.qrX,
         qrY: config.qrY,
         qrSize: config.qrSize,
+        qrRotationDeg: config.qrRotationDeg,
       });
       if (result.error) {
         toast.error(result.error);
@@ -226,12 +227,18 @@ export function PrintTemplateEditor({
   const kindLabel: Record<PrintTemplateKind, string> = {
     profile: t("templateProfile"),
     google_review: t("templateGoogleReview"),
+    instapay: t("templateInstapay"),
+    online_cash: t("templateOnlineCash"),
+    store_profile: t("templateStore"),
+    multiple_payment_methods: t("templateMultiplePaymentMethods"),
+    menu: t("templateMenuDesign1"),
+    menu_alt: t("templateMenuDesign2"),
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-2 text-sm font-semibold text-ink">
+        <span className="me-2 text-sm font-semibold text-ink">
           {t("templatesLabel")}
         </span>
         {PRINT_TEMPLATE_KINDS.map((kind) => {
@@ -258,15 +265,6 @@ export function PrintTemplateEditor({
           <h2 className="text-sm font-semibold text-ink">{t("previewTitle")}</h2>
           <p className="mt-1 text-sm text-muted">{t("previewHint")}</p>
         </div>
-        <a
-          href={`/api/admin/cards/123456/print?template=${activeKind}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-raised"
-        >
-          <Printer className="h-4 w-4" aria-hidden />
-          {t("openSamplePdf")}
-        </a>
       </div>
 
       <div
@@ -329,6 +327,8 @@ export function PrintTemplateEditor({
               style={{
                 width: `${config.qrSize * scale}px`,
                 height: `${config.qrSize * scale}px`,
+                transform: `rotate(${config.qrRotationDeg}deg)`,
+                transformOrigin: "center",
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -498,7 +498,24 @@ export function PrintTemplateEditor({
               />
               <p className="mt-1 text-[11px] text-muted">{t("points")}</p>
             </div>
-            <div />
+            <div>
+              <label className="block text-xs font-medium text-muted">
+                {t("qrRotation")}
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={360}
+                step={1}
+                value={config.qrRotationDeg}
+                onChange={(e) =>
+                  updateConfig({
+                    qrRotationDeg: Math.min(360, Math.max(0, Number(e.target.value))),
+                  })
+                }
+                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
             <div>
               <label className="block text-xs font-medium text-muted">
                 {t("xFraction")}

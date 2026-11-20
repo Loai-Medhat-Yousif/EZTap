@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import {
@@ -9,6 +9,7 @@ import {
   type ProfileLinkInput,
 } from "@/lib/validation/cards";
 import { LinkIconPicker } from "@/components/admin/link-icon-picker";
+import { WhatsappLinkMaker } from "@/components/admin/whatsapp-link-maker";
 import { Input } from "@/components/ui/input";
 import { Label, FieldError } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -40,12 +41,16 @@ export function LinkForm({
     });
   });
 
+  // useWatch (not form.watch) keeps the value reactive without the
+  // React Compiler having to bail out of memoizing this component.
+  const watchedIcon = useWatch({ control: form.control, name: "icon" });
+
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
       <div>
         <Label>{t("icon")}</Label>
         <LinkIconPicker
-          value={form.watch("icon")}
+          value={watchedIcon}
           onChange={(icon) =>
             form.setValue("icon", icon, { shouldValidate: true })
           }
@@ -64,6 +69,16 @@ export function LinkForm({
 
       <div>
         <Label htmlFor="link-url">{t("url")}</Label>
+        {watchedIcon === "whatsapp" && (
+          <div className="mb-2">
+            <WhatsappLinkMaker
+              inputId="link-whatsapp-number"
+              onGenerated={(url) =>
+                form.setValue("url", url, { shouldValidate: true })
+              }
+            />
+          </div>
+        )}
         <Input
           id="link-url"
           type="url"

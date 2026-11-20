@@ -7,18 +7,31 @@ import {
   Plus,
   Pencil,
   Trash2,
-  ChevronUp,
-  ChevronDown,
+  GripVertical,
   Eye,
   EyeOff,
+  Save,
+  RotateCcw,
 } from "lucide-react";
 import * as adminActions from "@/app/admin/cards/actions";
-import type { ProfileEditActions } from "@/lib/cards/profile-edit-actions";
-import type { ProfileLink } from "@/types";
+import type { LinkEditActions } from "@/lib/cards/profile-edit-actions";
+import { usePointerSort } from "@/lib/hooks/use-pointer-sort";
 import { getLinkIcon } from "@/lib/constants/link-icons";
 import { LinkForm } from "@/components/admin/link-form";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+/**
+ * The minimum a link row needs for this manager — satisfied by both
+ * `ProfileLink` and `StoreLink`, so the same component manages either.
+ */
+export type LinkListRow = {
+  id: string;
+  icon: string;
+  title: string;
+  url: string;
+  is_active: boolean;
+};
 
 export function ProfileLinksManager({
   scope,
@@ -26,23 +39,51 @@ export function ProfileLinksManager({
   actions = adminActions,
 }: {
   scope: string;
-  links: ProfileLink[];
-  actions?: ProfileEditActions;
+  links: LinkListRow[];
+  actions?: LinkEditActions;
 }) {
   const t = useTranslations("links");
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function handleMove(linkId: string, direction: "up" | "down") {
+  // Reordering is local until saved: dragging rearranges a copy, the
+  // bar below appears once that copy differs from the server's, and one
+  // Save persists the whole order — rather than a round trip per move.
+  const {
+    order,
+    isDirty,
+    reset,
+    dragIndex,
+    overIndex,
+    isDragging,
+    dragOffset,
+    shift,
+    handleProps,
+    rowProps,
+  } = usePointerSort({
+    items: links,
+    getId: (link) => link.id,
+    // Measuring a row that's swapped out for a form would make the
+    // pointer math meaningless, so dragging waits until it's closed.
+    disabled: isPending || editingId !== null || isAdding,
+  });
+
+  function handleSaveOrder() {
     startTransition(async () => {
-      await actions.moveProfileLink(scope, linkId, direction);
+      const result = await actions.reorderProfileLinks(
+        scope,
+        order.map((link) => link.id),
+      );
+      if (result?.error) toast.error(result.error);
+      else toast.success(t("orderSaved"));
     });
   }
 
   function handleToggleActive(linkId: string, next: boolean) {
     startTransition(async () => {
-      await actions.setProfileLinkActive(scope, linkId, next);
+      const result = await actions.setProfileLinkActive(scope, linkId, next);
+      if (result?.error) toast.error(result.error);
     });
   }
 
@@ -60,9 +101,52 @@ export function ProfileLinksManager({
         <p className="text-sm text-muted">{t("noLinksYet")}</p>
       )}
 
-      <ul className="space-y-2">
-        {links.map((link, index) => {
+      <div aria-live="polite">
+        {isDirty && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2">
+            <span className="flex items-center gap-2 text-sm font-medium text-warning">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-warning"
+                aria-hidden
+              />
+              {t("unsavedOrder")}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={reset}
+                disabled={isPending}
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                {t("discardOrder")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveOrder}
+                disabled={isPending}
+              >
+                <Save className="h-3.5 w-3.5" aria-hidden />
+                {isPending ? t("saving") : t("saveOrder")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {order.length > 1 && !isDirty && !isAdding && editingId === null && (
+        <p className="text-xs text-muted">{t("reorderHint")}</p>
+      )}
+
+      <ul
+        className={cn("space-y-2", isDragging && "select-none")}
+        aria-busy={isDragging || undefined}
+      >
+        {order.map((link, index) => {
           const Icon = getLinkIcon(link.icon);
+          const isDragged = dragIndex === index;
 
           if (editingId === link.id) {
             return (
@@ -91,11 +175,32 @@ export function ProfileLinksManager({
           return (
             <li
               key={link.id}
+              {...rowProps(link.id)}
+              style={{
+                transform: `translateY(${isDragged ? dragOffset : shift(link.id)}px)`,
+                zIndex: isDragged ? 10 : undefined,
+              }}
               className={cn(
-                "flex items-center gap-3 rounded-xl border border-border p-3",
+                "relative flex items-center gap-2 rounded-xl border border-border p-3",
+                !isDragged && "transition-transform duration-150",
+                isDragged && "border-primary bg-surface-raised shadow-lift",
+                overIndex === index &&
+                  dragIndex !== null &&
+                  dragIndex !== index &&
+                  "border-primary/60",
                 !link.is_active && "opacity-60",
               )}
             >
+              <button
+                type="button"
+                {...handleProps(link.id)}
+                aria-label={t("reorder")}
+                title={t("reorder")}
+                className="flex h-9 w-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-primary active:cursor-grabbing"
+              >
+                <GripVertical className="h-4 w-4" aria-hidden />
+              </button>
+
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface text-ink">
                 <Icon className="h-4 w-4" />
               </span>
@@ -108,26 +213,6 @@ export function ProfileLinksManager({
               </div>
 
               <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={index === 0 || isPending}
-                  onClick={() => handleMove(link.id, "up")}
-                  aria-label={t("moveUp")}
-                >
-                  <ChevronUp className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={index === links.length - 1 || isPending}
-                  onClick={() => handleMove(link.id, "down")}
-                  aria-label={t("moveDown")}
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
                 <Button
                   type="button"
                   variant="ghost"

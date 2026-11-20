@@ -77,6 +77,36 @@ export type CardPurchase = {
   createdAt: string;
 };
 
+export type CardTypeSummary = {
+  type: CardType;
+  total: number;
+  active: number;
+  sold: number;
+  unsold: number;
+  revenue: number;
+};
+
+/**
+ * Per-type business summary for the Statistics page: one row per card
+ * type (zero-filled by the SQL for types with no cards yet) with
+ * created/active/sold/unsold counts and per-type revenue.
+ */
+export async function getCardTypeSummary(): Promise<CardTypeSummary[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("admin_card_type_summary");
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    type: row.card_type as CardType,
+    total: Number(row.total),
+    active: Number(row.active),
+    sold: Number(row.sold),
+    unsold: Number(row.unsold),
+    revenue: Number(row.revenue),
+  }));
+}
+
 /** Every month that has at least one sold card, newest first, plus the
  * lifetime totals (which are just their sums — no extra query). */
 export async function getIncomeOverview(): Promise<IncomeOverview> {

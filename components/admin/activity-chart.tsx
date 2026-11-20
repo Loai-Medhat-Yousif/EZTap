@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { useLocale } from "next-intl";
 import {
   ResponsiveContainer,
   LineChart,
@@ -30,6 +31,7 @@ export function ActivityChart({
   labels: { views: string; clicks: string };
 }) {
   const { resolvedTheme } = useTheme();
+  const locale = useLocale();
   const isClient = useIsClient();
 
   if (!isClient) {
@@ -37,6 +39,13 @@ export function ActivityChart({
   }
 
   const palette = resolvedTheme === "dark" ? PALETTES.dark : PALETTES.light;
+  // Formatted in the app's locale, not the browser's — this chart sits
+  // on screens whose labels all come from the same translation files.
+  const dayFormatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
+  const fullFormatter = new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+  });
 
   return (
     <ResponsiveContainer width="100%" height={224}>
@@ -45,7 +54,7 @@ export function ActivityChart({
         <XAxis
           dataKey="day"
           tickFormatter={(value: string) =>
-            new Date(value).toLocaleDateString(undefined, { weekday: "short" })
+            dayFormatter.format(new Date(`${value}T00:00:00Z`))
           }
           stroke={palette.text}
           fontSize={12}
@@ -63,10 +72,7 @@ export function ActivityChart({
         <Tooltip
           labelFormatter={(value) =>
             typeof value === "string"
-              ? new Date(value).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                })
+              ? fullFormatter.format(new Date(`${value}T00:00:00Z`))
               : value
           }
           contentStyle={{

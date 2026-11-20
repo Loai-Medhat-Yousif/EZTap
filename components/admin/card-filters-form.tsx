@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
+import { CARD_TYPES } from "@/types";
+import { CARD_TYPE_LABEL_KEY } from "@/lib/cards/type-labels";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { CardListFilters } from "@/lib/validation/cards";
@@ -53,8 +55,11 @@ export function CardFiltersForm({
           className="h-11 rounded-xl border border-border bg-surface-raised px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           <option value="ALL">{t("typeAll")}</option>
-          <option value="PROFILE">{t("typeProfile")}</option>
-          <option value="GOOGLE_REVIEW">{t("typeGoogleReview")}</option>
+          {CARD_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {t(CARD_TYPE_LABEL_KEY[type])}
+            </option>
+          ))}
         </select>
       </div>
 

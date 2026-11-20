@@ -5,36 +5,42 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import {
-  googleReviewDetailsSchema,
-  type GoogleReviewDetailsInput,
-} from "@/lib/validation/cards";
-import { updateGoogleReviewUrl } from "@/app/admin/cards/actions";
+import { targetUrlSchema, type TargetUrlInput } from "@/lib/validation/cards";
+import { updateTargetUrl } from "@/app/admin/cards/actions";
 import { GoogleMapsReviewHelper } from "@/components/admin/google-maps-review-helper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label, FieldError } from "@/components/ui/label";
 
-export function EditGoogleReviewForm({
+/**
+ * The single link editor for every "scan -> redirect" card type. A
+ * Google Review card also gets the Maps → writereview helper; the
+ * payment cards (InstaPay / Online Cash) just take the link as typed.
+ */
+export function EditTargetUrlForm({
   cardId,
   defaultValues,
+  showReviewHelper = false,
+  labelKey = "targetUrlLabel",
 }: {
   cardId: string;
-  defaultValues: GoogleReviewDetailsInput;
+  defaultValues: TargetUrlInput;
+  showReviewHelper?: boolean;
+  labelKey?: string;
 }) {
   const t = useTranslations("cards");
   const [isSubmitting, startSubmit] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
 
-  const form = useForm<GoogleReviewDetailsInput>({
-    resolver: zodResolver(googleReviewDetailsSchema),
+  const form = useForm<TargetUrlInput>({
+    resolver: zodResolver(targetUrlSchema),
     defaultValues,
   });
 
   const onSubmit = form.handleSubmit((values) => {
     setFormError(null);
     startSubmit(async () => {
-      const result = await updateGoogleReviewUrl(cardId, values);
+      const result = await updateTargetUrl(cardId, values);
       if (result?.error) {
         setFormError(result.error);
       } else {
@@ -45,24 +51,27 @@ export function EditGoogleReviewForm({
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
-      <GoogleMapsReviewHelper
-        onGenerated={(url) =>
-          form.setValue("googleReviewUrl", url, {
-            shouldValidate: true,
-            shouldDirty: true,
-          })
-        }
-      />
+      {showReviewHelper && (
+        <GoogleMapsReviewHelper
+          onGenerated={(url) =>
+            form.setValue("targetUrl", url, {
+              shouldValidate: true,
+              shouldDirty: true,
+            })
+          }
+        />
+      )}
 
       <div>
-        <Label htmlFor="googleReviewUrl">{t("googleReviewUrlLabel")}</Label>
+        <Label htmlFor="targetUrl">{t(labelKey)}</Label>
         <Input
-          id="googleReviewUrl"
+          id="targetUrl"
           type="url"
-          aria-invalid={!!form.formState.errors.googleReviewUrl}
-          {...form.register("googleReviewUrl")}
+          placeholder="https://"
+          aria-invalid={!!form.formState.errors.targetUrl}
+          {...form.register("targetUrl")}
         />
-        <FieldError>{form.formState.errors.googleReviewUrl?.message}</FieldError>
+        <FieldError>{form.formState.errors.targetUrl?.message}</FieldError>
       </div>
       <FieldError>{formError}</FieldError>
       <Button type="submit" disabled={isSubmitting}>

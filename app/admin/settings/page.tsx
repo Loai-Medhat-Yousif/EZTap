@@ -1,8 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import { getAdminContext } from "@/lib/auth/require-admin";
+import { getSocialLinks, getSiteSettings } from "@/lib/data/social-links";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
 import { ChangePasswordForm } from "@/components/admin/change-password-form";
+import { SocialLinksManager } from "@/components/admin/social-links-manager";
+import { SiteSettingsForm } from "@/components/admin/site-settings-form";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -10,7 +13,11 @@ export const metadata = {
 
 export default async function SettingsPage() {
   const t = await getTranslations("settings");
-  const context = await getAdminContext();
+  const [context, socialLinks, siteSettings] = await Promise.all([
+    getAdminContext(),
+    getSocialLinks(),
+    getSiteSettings(),
+  ]);
   // Shown as the login username (the email's local part) — that's what
   // the admin actually types to sign in, not the internal email.
   const username = context?.user.email?.split("@")[0] ?? "";
@@ -31,6 +38,26 @@ export default async function SettingsPage() {
             <ThemeSwitcher />
           </div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface-raised p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">
+          {t("socialTitle")}
+        </h2>
+        <p className="mb-5 text-sm text-muted">{t("socialDescription")}</p>
+        <SocialLinksManager links={socialLinks} />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface-raised p-6">
+        <h2 className="mb-1 text-sm font-semibold text-ink">
+          {t("footerTitle")}
+        </h2>
+        <p className="mb-5 text-sm text-muted">{t("footerDescription")}</p>
+        <SiteSettingsForm
+          defaultValues={{
+            makeYourOwnUrl: siteSettings?.make_your_own_url ?? undefined,
+          }}
+        />
       </section>
 
       <section className="rounded-2xl border border-border bg-surface-raised p-6">

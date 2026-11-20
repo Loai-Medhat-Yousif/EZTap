@@ -1,14 +1,15 @@
 "use client";
 
 export type TrackableEvent =
-  | { type: "LINK_CLICK"; linkId: string }
+  | { type: "LINK_CLICK"; linkId: string; linkKind?: "profile" | "store" | "payment" }
   | { type: "PHONE_CLICK" }
   | { type: "WHATSAPP_CLICK" }
   | { type: "EMAIL_CLICK" }
   | { type: "WEBSITE_CLICK" }
   | { type: "MAPS_CLICK" }
   | { type: "SHARE_CLICK" }
-  | { type: "SAVE_CONTACT_CLICK" };
+  | { type: "SAVE_CONTACT_CLICK" }
+  | { type: "REVIEW_CLICK" };
 
 /**
  * Records a click-type interaction without blocking or delaying the

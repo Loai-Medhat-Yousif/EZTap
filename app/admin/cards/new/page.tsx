@@ -8,13 +8,16 @@ export const metadata = {
 
 export default async function NewCardPage() {
   const t = await getTranslations("cards");
-  const initialCardId = await previewNewCardId();
+  const preview = await previewNewCardId();
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-xl font-semibold text-ink">{t("createCard")}</h1>
       <div className="rounded-2xl border border-border bg-surface-raised p-6">
-        <CreateCardForm initialCardId={initialCardId} />
+        <CreateCardForm
+          initialCardId={preview.cardId ?? ""}
+          previewError={preview.error ?? null}
+        />
       </div>
     </div>
   );

@@ -1,7 +1,10 @@
 import { Phone, Mail, Globe, MapPin, User } from "lucide-react";
 import { getLinkIcon } from "@/lib/constants/link-icons";
+import { cardAccentStyle } from "@/lib/cards/accent-color";
+import type { CardTheme } from "@/types";
 
 export type ProfileCardPreviewData = {
+  theme?: CardTheme;
   fullName: string;
   jobTitle?: string | null;
   bio?: string | null;
@@ -38,7 +41,11 @@ export function ProfileCardPreview({ data }: { data: ProfileCardPreviewData }) {
   ].filter((v): v is { key: string; icon: typeof Phone } => Boolean(v));
 
   return (
-    <div className="mx-auto w-full max-w-xs rounded-3xl border border-border bg-surface-raised p-6 text-center">
+    <div
+      data-card-accent
+      style={cardAccentStyle(data.theme)}
+      className="mx-auto w-full max-w-xs rounded-3xl border border-border bg-surface-raised p-6 text-center"
+    >
       <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-border bg-surface">
         {data.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

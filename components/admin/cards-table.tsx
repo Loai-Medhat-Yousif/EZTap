@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Eye, MousePointerClick } from "lucide-react";
 import type { CardListRow } from "@/lib/data/cards";
+import { CARD_TYPE_LABEL_KEY } from "@/lib/cards/type-labels";
 import { Badge } from "@/components/ui/badge";
 
 export async function CardsTable({ rows }: { rows: CardListRow[] }) {
@@ -49,16 +50,15 @@ export async function CardsTable({ rows }: { rows: CardListRow[] }) {
                 {row.card_id}
               </td>
               <td className="whitespace-nowrap px-4 py-3">
-                <Badge tone="primary">
-                  {row.type === "PROFILE"
-                    ? t("typeProfile")
-                    : t("typeGoogleReview")}
-                </Badge>
+                <Badge tone="primary">{t(CARD_TYPE_LABEL_KEY[row.type])}</Badge>
               </td>
               <td className="max-w-56 truncate px-4 py-3 text-ink">
-                {row.type === "PROFILE"
+                {row.type === "PROFILE" ||
+                row.type === "STORE_PROFILE" ||
+                row.type === "MULTIPLE_PAYMENT_METHODS" ||
+                row.type === "MENU"
                   ? row.profileFullName || t("unnamedProfile")
-                  : row.googleReviewUrl}
+                  : row.targetUrl}
               </td>
               <td className="whitespace-nowrap px-4 py-3">
                 <Badge tone={row.status === "ACTIVE" ? "success" : "muted"}>

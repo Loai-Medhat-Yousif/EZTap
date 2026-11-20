@@ -6,8 +6,12 @@
 
 ```bash
 npx supabase link --project-ref <your-project-ref>
-npx supabase db push
+npx supabase db push --remote
 ```
+
+`db push` targets the **local** database by default (Docker + `supabase start`).
+Pass `--remote` to apply migrations to the linked project, or `--remote=<ref>`
+to target a specific one. `--dry-run` shows what would be applied first.
 
 **Via the SQL editor** (no CLI): open each file in `migrations/`, in filename
 order, and run it in the Supabase Dashboard's SQL editor.
@@ -39,6 +43,11 @@ npx supabase gen types typescript --project-id <your-project-ref> > types/databa
 | `20260926000100_card_purchases.sql` | `card_purchases` table (buy receipts) + `admin_inventory_overview()` (stock, cost, profit), `admin_income_series()` (zero-filled day/week/month income/cost/profit) and `admin_income_period()` (current day/month/year income, cost, profit, cards sold) |
 | `20260926000200_print_template.sql` | `print_template` table (print layout: design path + card ID/QR positions and sizes) + the `print-designs` Storage bucket |
 | `20260927000100_print_templates_and_income_period.sql` | Adds the `admin_income_period()` RPC (current day/month/year income, cost, profit, cards sold) that the Stage 12 migration declared too late to take effect, and rebuilds `print_template` as one row per card type (`profile` / `google_review`) with a per-template `width_cm`/`height_cm` |
+| `20261017000100_new_card_enums.sql` | Adds `INSTAPAY` / `ONLINE_CASH` / `STORE_PROFILE` to `card_type` and `REVIEW_CLICK` to `analytics_event_type` (isolated: Postgres can't add and use an enum value in one transaction) |
+| `20261017000200_new_card_types_schema.sql` | Renames `cards.google_review_url` → `target_url`; creates `store_profiles`, `store_links`, `social_links`, `site_settings`; adds `analytics_events.store_link_id`; seeds the three new print-template rows |
+| `20261017000300_new_card_functions.sql` | Rebuilds `get_card_for_display()` for the five-type world, adds `get_public_site_footer()`, re-creates `record_analytics_event()` (8 args, service-role only), and updates the admin list/top-links/breakdown/income RPCs to include store data |
+| `20261018000100_admin_card_type_summary.sql` | `admin_card_type_summary()` — per-type created/active/sold/unsold counts + revenue, zero-filled across all five types, for the Statistics page |
+| `20261109000100_card_theme_hex.sql` | Changes `cards.theme` from enum to `text` storing an arbitrary `#rrggbb` hex colour. Defaults to the brand blue `#005CF2`. Adds a CHECK constraint that only allows valid hex colours. |
 
 ## Supabase Dashboard settings (not expressible in SQL)
 

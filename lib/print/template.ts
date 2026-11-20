@@ -10,13 +10,37 @@
  * thing.
  */
 
+import type { CardType } from "@/types";
+
 export const CM_TO_PT = 72 / 2.54; // 1cm = 28.3465pt
 
-export type PrintTemplateKind = "profile" | "google_review";
+export type PrintTemplateKind =
+  | "profile"
+  | "google_review"
+  | "instapay"
+  | "online_cash"
+  | "store_profile"
+  | "multiple_payment_methods"
+  | "menu"
+  | "menu_alt";
+
+/** The two printable designs available to MENU cards only. */
+export type MenuPrintTemplateKind = "menu" | "menu_alt";
+
+export const MENU_PRINT_TEMPLATE_KINDS: readonly MenuPrintTemplateKind[] = [
+  "menu",
+  "menu_alt",
+];
 
 export const PRINT_TEMPLATE_KINDS: readonly PrintTemplateKind[] = [
   "profile",
   "google_review",
+  "instapay",
+  "online_cash",
+  "store_profile",
+  "multiple_payment_methods",
+  "menu",
+  "menu_alt",
 ];
 
 export const MIN_DIMENSION_CM = 3;
@@ -50,10 +74,54 @@ export type PrintTemplate = {
   qrY: number;
   /** QR square side length in points. */
   qrSize: number;
+  /** Clockwise QR rotation in degrees (0..360). */
+  qrRotationDeg: number;
 };
 
 export function isPrintTemplateKind(value: unknown): value is PrintTemplateKind {
-  return value === "profile" || value === "google_review";
+  return (
+    value === "profile" ||
+    value === "google_review" ||
+    value === "instapay" ||
+    value === "online_cash" ||
+    value === "store_profile" ||
+    value === "multiple_payment_methods" ||
+    value === "menu" ||
+    value === "menu_alt"
+  );
+}
+
+export function isMenuPrintTemplateKind(
+  value: unknown,
+): value is MenuPrintTemplateKind {
+  return value === "menu" || value === "menu_alt";
+}
+
+/**
+ * Which print template a card type uses. One template per renderable
+ * card type, so a store/menu card can be laid out differently from a
+ * personal profile, and each payment card has its own.
+ */
+export function printTemplateKindForCardType(
+  type: CardType,
+): PrintTemplateKind {
+  switch (type) {
+    case "GOOGLE_REVIEW":
+      return "google_review";
+    case "INSTAPAY":
+      return "instapay";
+    case "ONLINE_CASH":
+      return "online_cash";
+    case "STORE_PROFILE":
+      return "store_profile";
+    case "MULTIPLE_PAYMENT_METHODS":
+      return "multiple_payment_methods";
+    case "MENU":
+      return "menu";
+    case "PROFILE":
+    default:
+      return "profile";
+  }
 }
 
 export function pageWidthPt(template: Pick<PrintTemplate, "widthCm">): number {
@@ -83,6 +151,7 @@ export function defaultPrintTemplate(kind: PrintTemplateKind): PrintTemplate {
     qrX: 0.66,
     qrY: 0.8,
     qrSize: 80,
+    qrRotationDeg: 0,
   };
 }
 

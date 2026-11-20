@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getAdminContext } from "@/lib/auth/require-admin";
 import { getPrintTemplates } from "@/lib/data/print-template";
@@ -11,8 +11,11 @@ export const metadata = {
 };
 
 export default async function PrintTemplatePage() {
+  // Same guard as every other admin surface: the proxy already sends
+  // unauthenticated visitors to /login, but a Server Component must
+  // never assume it was reached through the proxy unchanged.
   const context = await getAdminContext();
-  if (!context) notFound();
+  if (!context) redirect("/login");
 
   const [t, templates] = await Promise.all([
     getTranslations("print"),

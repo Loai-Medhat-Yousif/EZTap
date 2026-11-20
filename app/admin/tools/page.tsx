@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
-import { Wand2 } from "lucide-react";
+import { Wand2, MessageCircle } from "lucide-react";
 import { GoogleReviewTool } from "@/components/admin/google-review-tool";
+import { WhatsappLinkTool } from "@/components/admin/whatsapp-link-tool";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -22,6 +23,14 @@ export default async function ToolsPage() {
           {t("reviewLinkTitle")}
         </h2>
         <GoogleReviewTool />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface-raised p-6">
+        <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink">
+          <MessageCircle className="h-4 w-4" aria-hidden />
+          {t("whatsappLinkTitle")}
+        </h2>
+        <WhatsappLinkTool />
       </section>
     </div>
   );

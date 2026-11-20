@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import {
+  PDFDocument,
+  StandardFonts,
+  degrees,
+  rgb,
+  type PDFImage,
+} from "pdf-lib";
 import { getAdminContext } from "@/lib/auth/require-admin";
 import { isValidCardId } from "@/lib/cards/ids";
 import { getCardDestinationUrl } from "@/lib/cards/urls";
 import { getPrintTemplate } from "@/lib/data/print-template";
 import {
+  isMenuPrintTemplateKind,
   isPrintTemplateKind,
   pageHeightPt,
   pageWidthPt,
+  printTemplateKindForCardType,
+  type MenuPrintTemplateKind,
   type PrintTemplateKind,
 } from "@/lib/print/template";
 import { downloadPrintDesign } from "@/lib/storage/print-designs";
@@ -22,6 +31,50 @@ import { EZTAB_LOGO_DATA_URI } from "@/lib/qr/logo-data-uri";
 const LOGO_SIZE_RATIO = 0.22;
 const LOGO_BACKING_RATIO = 1.35;
 
+/**
+ * Draw the design slightly past every page edge. Printers/viewers can render a
+ * hairline gap at the boundary of a background drawn exactly 0..width/height;
+ * the extra ~0.7mm is clipped by the page boxes but hides that white line.
+ */
+const DESIGN_OVERSCAN_PT = 2;
+
+/**
+ * Center-crop the uploaded design to the page, matching the editor's CSS
+ * `object-cover`. pdf-lib has no source-rect API, so the overflow is simply
+ * drawn outside the page and clipped by the crop box.
+ */
+function drawDesignCover(
+  page: ReturnType<PDFDocument["addPage"]>,
+  image: PDFImage,
+  pageWidth: number,
+  pageHeight: number,
+) {
+  const { width: imageWidth, height: imageHeight } = image.size();
+  if (!imageWidth || !imageHeight) return;
+
+  const targetWidth = pageWidth + DESIGN_OVERSCAN_PT * 2;
+  const targetHeight = pageHeight + DESIGN_OVERSCAN_PT * 2;
+  const imageAspect = imageWidth / imageHeight;
+  const targetAspect = targetWidth / targetHeight;
+
+  let width: number;
+  let height: number;
+  if (imageAspect > targetAspect) {
+    height = targetHeight;
+    width = height * imageAspect;
+  } else {
+    width = targetWidth;
+    height = width / imageAspect;
+  }
+
+  page.drawImage(image, {
+    x: (pageWidth - width) / 2,
+    y: (pageHeight - height) / 2,
+    width,
+    height,
+  });
+}
+
 /** Parse a CSS hex colour (#rrggbb) into RGB (0..1). */
 function hexToRgb01(hex: string): [number, number, number] {
   const m = /^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/.exec(hex.trim());
@@ -34,6 +87,28 @@ function hexToRgb01(hex: string): [number, number, number] {
 
 /** Approximate PDF text baseline offset from top (for top-left anchor). */
 const ASCENT_RATIO = 0.72;
+
+/**
+ * pdf-lib rotates around the supplied bottom-left origin, not the centre.
+ * Compensate so the rotated square stays centred on (centerX, centerY).
+ * Callers pass a signed angle: negative degrees = clockwise in PDF space,
+ * matching the editor's CSS `rotate()` preview.
+ */
+function rotatedSquareOrigin(
+  centerX: number,
+  centerY: number,
+  size: number,
+  rotationDeg: number,
+): { x: number; y: number } {
+  const radians = (rotationDeg * Math.PI) / 180;
+  const half = size / 2;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: centerX - half * (cos - sin),
+    y: centerY - half * (sin + cos),
+  };
+}
 
 /** Embed a `data:image/png;base64,…` URI as a PDF image, or null on failure. */
 async function decodeDataUriPng(pdfDoc: PDFDocument, dataUri: string) {
@@ -63,7 +138,7 @@ export async function GET(
 
   const { data: card, error } = await supabase
     .from("cards")
-    .select("card_id, type")
+    .select("id, card_id, type")
     .eq("card_id", cardId)
     .maybeSingle();
 
@@ -71,14 +146,27 @@ export async function GET(
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
   }
 
-  // The card's type picks the template; a `?template=` override lets the
-  // editor preview either one against the sample card.
+  // The card's type picks the template; MENU cards use the design selected
+  // on their menu profile. A `?template=` override lets the editor preview
+  // any template against the sample card.
+  let menuTemplateKind: MenuPrintTemplateKind = "menu";
+  if (card.type === "MENU") {
+    const { data: menu } = await supabase
+      .from("menu_profiles")
+      .select("print_template_kind")
+      .eq("card_id", card.id)
+      .maybeSingle();
+    if (menu && isMenuPrintTemplateKind(menu.print_template_kind)) {
+      menuTemplateKind = menu.print_template_kind;
+    }
+  }
+
   const requested = new URL(request.url).searchParams.get("template");
   const kind: PrintTemplateKind = isPrintTemplateKind(requested)
     ? requested
-    : card.type === "GOOGLE_REVIEW"
-      ? "google_review"
-      : "profile";
+    : card.type === "MENU"
+      ? menuTemplateKind
+      : printTemplateKindForCardType(card.type);
 
   const template = await getPrintTemplate(kind);
   const pageWidth = pageWidthPt(template);
@@ -87,7 +175,16 @@ export async function GET(
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([pageWidth, pageHeight]);
 
-  // Background design (stretched to fill the page).
+  // Pin every PDF box to the exact cm-derived size. Without an explicit
+  // CropBox some viewers fall back to a default page size and expose a white
+  // strip around the artwork.
+  page.setMediaBox(0, 0, pageWidth, pageHeight);
+  page.setCropBox(0, 0, pageWidth, pageHeight);
+  page.setBleedBox(0, 0, pageWidth, pageHeight);
+  page.setTrimBox(0, 0, pageWidth, pageHeight);
+  page.setArtBox(0, 0, pageWidth, pageHeight);
+
+  // Background design, centre-cropped to fill the page exactly.
   if (template.designPath) {
     const bytes = await downloadPrintDesign(supabase, template.designPath);
     if (bytes) {
@@ -103,12 +200,7 @@ export async function GET(
         embed = null;
       }
       if (embed) {
-        page.drawImage(embed, {
-          x: 0,
-          y: 0,
-          width: pageWidth,
-          height: pageHeight,
-        });
+        drawDesignCover(page, embed, pageWidth, pageHeight);
       }
     }
   }
@@ -141,33 +233,61 @@ export async function GET(
   const qrXPt = template.qrX * pageWidth;
   const qrYTopFromBottom = pageHeight - template.qrY * pageHeight;
   const qrYBottomFromBottom = qrYTopFromBottom - qrSizePt;
+  const centerX = qrXPt + qrSizePt / 2;
+  const centerY = qrYBottomFromBottom + qrSizePt / 2;
+
+  // The editor shows clockwise rotation; PDF user space has Y pointing up,
+  // so negate the angle to match the live preview.
+  const pdfRotationDeg = -template.qrRotationDeg;
+  const pdfRotation = degrees(pdfRotationDeg);
+
+  const qrOrigin = rotatedSquareOrigin(
+    centerX,
+    centerY,
+    qrSizePt,
+    pdfRotationDeg,
+  );
   page.drawImage(qrImage, {
-    x: qrXPt,
-    y: qrYBottomFromBottom,
+    x: qrOrigin.x,
+    y: qrOrigin.y,
     width: qrSizePt,
     height: qrSizePt,
+    rotate: pdfRotation,
   });
 
   // Dark backing square + EZTab logo, matching buildCardQrSvg's overlay
   // (lib/qr/generate-qr-svg.ts) so the printed QR matches the QR panel.
+  // Both are rotated around the same centre as the QR image.
   const logoSize = qrSizePt * LOGO_SIZE_RATIO;
   const backingSize = logoSize * LOGO_BACKING_RATIO;
-  const centerX = qrXPt + qrSizePt / 2;
-  const centerY = qrYBottomFromBottom + qrSizePt / 2;
+  const backingOrigin = rotatedSquareOrigin(
+    centerX,
+    centerY,
+    backingSize,
+    pdfRotationDeg,
+  );
   page.drawRectangle({
-    x: centerX - backingSize / 2,
-    y: centerY - backingSize / 2,
+    x: backingOrigin.x,
+    y: backingOrigin.y,
     width: backingSize,
     height: backingSize,
+    rotate: pdfRotation,
     color: rgb(21 / 255, 23 / 255, 31 / 255), // #15171F
   });
   const logoPng = await decodeDataUriPng(pdfDoc, EZTAB_LOGO_DATA_URI);
   if (logoPng) {
+    const logoOrigin = rotatedSquareOrigin(
+      centerX,
+      centerY,
+      logoSize,
+      pdfRotationDeg,
+    );
     page.drawImage(logoPng, {
-      x: centerX - logoSize / 2,
-      y: centerY - logoSize / 2,
+      x: logoOrigin.x,
+      y: logoOrigin.y,
       width: logoSize,
       height: logoSize,
+      rotate: pdfRotation,
     });
   }
 

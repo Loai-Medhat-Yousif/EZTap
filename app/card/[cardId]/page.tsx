@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { getPublicCardView } from "@/lib/data/public-card";
+import { getPublicSiteFooter } from "@/lib/data/social-links";
 import { getCardProfileUrl } from "@/lib/cards/urls";
 import { getDeviceCategoryFromUserAgent } from "@/lib/analytics/parse-user-agent";
 import { referrerOrigin } from "@/lib/analytics/referrer";
@@ -15,6 +16,9 @@ import { getProfileImagePublicUrl } from "@/lib/storage/profile-images";
 import { createClient } from "@/lib/supabase/server";
 import { StatusScreen } from "@/components/shared/status-screen";
 import { PublicProfileRedesigned } from "@/components/profile/public-profile-redesigned";
+import { StoreProfilePublic } from "@/components/profile/store-profile-public";
+import { PaymentProfilePublic } from "@/components/profile/payment-profile-public";
+import { MenuProfilePublic } from "@/components/profile/menu-profile-public";
 
 type PageProps = {
   params: Promise<{ cardId: string }>;
@@ -24,11 +28,112 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { cardId } = await params;
   const view = isValidCardId(cardId) ? await getPublicCardView(cardId) : null;
 
-  if (!view || view.status !== "ACTIVE" || view.type !== "PROFILE") {
-    // Inactive, not-found, and Google Review cards are all deliberately
-    // not indexable — spec section 21: admin/non-profile pages must be
-    // noindex, and a Google Review "card" is a redirect, not a page.
+  // Inactive, unknown, and every redirect card (Google Review, InstaPay,
+  // Online Cash) are deliberately not indexable — spec section 21:
+  // admin/non-profile pages must be noindex, and a redirect "card" is not
+  // a page of ours at all.
+  if (
+    !view ||
+    view.status !== "ACTIVE" ||
+    (view.type !== "PROFILE" &&
+      view.type !== "STORE_PROFILE" &&
+      view.type !== "MULTIPLE_PAYMENT_METHODS" &&
+      view.type !== "MENU")
+  ) {
     return { title: "EZTab", robots: { index: false, follow: false } };
+  }
+
+  const supabase = await createClient();
+
+  if (view.type === "MULTIPLE_PAYMENT_METHODS") {
+    const { payment } = view;
+    const title = payment.full_name;
+    const description = payment.bio || `${payment.full_name} on EZTab.`;
+    const canonical = getCardProfileUrl(view.card_id);
+    const imageUrl = payment.payment_image_path
+      ? getProfileImagePublicUrl(supabase, payment.payment_image_path)
+      : undefined;
+
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        title: `${title} | EZTab`,
+        description,
+        url: canonical,
+        type: "website",
+        images: imageUrl ? [imageUrl] : undefined,
+      },
+      twitter: {
+        card: "summary",
+        title: `${title} | EZTab`,
+        description,
+        images: imageUrl ? [imageUrl] : undefined,
+      },
+      robots: { index: true, follow: true },
+    };
+  }
+
+  if (view.type === "STORE_PROFILE") {
+    const { store } = view;
+    const title = [store.full_name, store.category].filter(Boolean).join(" | ");
+    const description =
+      store.bio || `${store.full_name} on EZTab.`;
+    const canonical = getCardProfileUrl(view.card_id);
+    const imageUrl = store.store_image_path
+      ? getProfileImagePublicUrl(supabase, store.store_image_path)
+      : undefined;
+
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        title: `${title} | EZTab`,
+        description,
+        url: canonical,
+        type: "website",
+        images: imageUrl ? [imageUrl] : undefined,
+      },
+      twitter: {
+        card: "summary",
+        title: `${title} | EZTab`,
+        description,
+        images: imageUrl ? [imageUrl] : undefined,
+      },
+      robots: { index: true, follow: true },
+    };
+  }
+
+  if (view.type === "MENU") {
+    const { menu } = view;
+    const title = [menu.full_name, menu.category].filter(Boolean).join(" | ");
+    const description = menu.bio || `${menu.full_name} on EZTab.`;
+    const canonical = getCardProfileUrl(view.card_id);
+    const imageUrl = menu.menu_image_path
+      ? getProfileImagePublicUrl(supabase, menu.menu_image_path)
+      : undefined;
+
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        title: `${title} | EZTab`,
+        description,
+        url: canonical,
+        type: "website",
+        images: imageUrl ? [imageUrl] : undefined,
+      },
+      twitter: {
+        card: "summary",
+        title: `${title} | EZTab`,
+        description,
+        images: imageUrl ? [imageUrl] : undefined,
+      },
+      robots: { index: true, follow: true },
+    };
   }
 
   const { profile } = view;
@@ -37,7 +142,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     profile.bio || `${profile.full_name}'s digital business card, powered by EZTab.`;
   const canonical = getCardProfileUrl(view.card_id);
 
-  const supabase = await createClient();
   const imageUrl = profile.profile_image_path
     ? getProfileImagePublicUrl(supabase, profile.profile_image_path)
     : undefined;
@@ -110,19 +214,88 @@ export default async function CardPage({ params }: PageProps) {
     return <InactiveCard />;
   }
 
-  if (view.type === "GOOGLE_REVIEW") {
-    // Straight to Google Maps — no EZTab page in between (spec
-    // sections 1 and 8). redirect() throws internally, so nothing
-    // below this line ever renders for a Google Review card.
-    redirect(view.google_review_url);
+  // Every "scan -> redirect" card (Google Review, InstaPay, Online Cash)
+  // goes straight to its target — no EZTab page in between (spec
+  // sections 1 and 8). The VIEW above is still counted, so payment-card
+  // scans show up in analytics even though no page renders. redirect()
+  // throws internally, so nothing below this line runs for these types.
+  // Compared against each literal rather than via isRedirectCardType so
+  // TypeScript narrows the union down to the page-rendering members below.
+  if (
+    view.type === "GOOGLE_REVIEW" ||
+    view.type === "INSTAPAY" ||
+    view.type === "ONLINE_CASH"
+  ) {
+    redirect(view.target_url);
   }
 
+  const footer = await getPublicSiteFooter();
   const supabase = await createClient();
-  const imageUrl = view.profile.profile_image_path
-    ? getProfileImagePublicUrl(supabase, view.profile.profile_image_path)
-    : null;
 
-  return <PublicProfileRedesigned view={view} imageUrl={imageUrl} />;
+  if (view.type === "MULTIPLE_PAYMENT_METHODS") {
+    const imageUrl = view.payment.payment_image_path
+      ? getProfileImagePublicUrl(supabase, view.payment.payment_image_path)
+      : null;
+
+    return (
+      <PaymentProfilePublic view={view} imageUrl={imageUrl} footer={footer} />
+    );
+  }
+
+  if (view.type === "STORE_PROFILE") {
+    const imageUrl = view.store.store_image_path
+      ? getProfileImagePublicUrl(supabase, view.store.store_image_path)
+      : null;
+
+    return (
+      <StoreProfilePublic view={view} imageUrl={imageUrl} footer={footer} />
+    );
+  }
+
+  if (view.type === "MENU") {
+    const imageUrl = view.menu.menu_image_path
+      ? getProfileImagePublicUrl(supabase, view.menu.menu_image_path)
+      : null;
+    const categories = view.categories.map((cat) => ({
+      ...cat,
+      items: cat.items.map((item) => ({
+        ...item,
+        imageUrl: item.image_path
+          ? getProfileImagePublicUrl(supabase, item.image_path)
+          : null,
+      })),
+    }));
+    const offers = view.offers.map((offer) => ({
+      ...offer,
+      imageUrl: offer.image_path
+        ? getProfileImagePublicUrl(supabase, offer.image_path)
+        : null,
+    }));
+
+    return (
+      <MenuProfilePublic
+        view={view}
+        imageUrl={imageUrl}
+        footer={footer}
+        categories={categories}
+        offers={offers}
+      />
+    );
+  }
+
+  if (view.type === "PROFILE") {
+    const imageUrl = view.profile.profile_image_path
+      ? getProfileImagePublicUrl(supabase, view.profile.profile_image_path)
+      : null;
+
+    return (
+      <PublicProfileRedesigned view={view} imageUrl={imageUrl} footer={footer} />
+    );
+  }
+
+  // Unreachable in practice — every ACTIVE card type is handled above —
+  // but explicit so a future card type can't silently render a blank page.
+  notFound();
 }
 
 async function InactiveCard() {

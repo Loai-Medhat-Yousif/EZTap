@@ -11,7 +11,7 @@ export type EditLinkState = {
 /**
  * The state of a card's current (non-closed, non-revoked) edit link, for
  * the admin panel. "pending" means the link exists but the customer
- * hasn't opened it yet (so the 30-minute clock hasn't started).
+ * hasn't opened it yet (so the countdown clock hasn't started).
  */
 export async function getActiveEditLinkState(
   cardUuid: string,
@@ -20,7 +20,7 @@ export async function getActiveEditLinkState(
 
   const { data } = await supabase
     .from("card_edit_links")
-    .select("expires_at")
+    .select("expires_at, opened_at")
     .eq("card_id", cardUuid)
     .is("closed_at", null)
     .is("revoked_at", null)
@@ -29,9 +29,13 @@ export async function getActiveEditLinkState(
     .maybeSingle();
 
   if (!data) return { status: "none", expiresAt: null };
-  if (!data.expires_at) return { status: "pending", expiresAt: null };
-  if (new Date(data.expires_at).getTime() <= Date.now()) {
-    return { status: "expired", expiresAt: data.expires_at };
+  if (!data.opened_at) return { status: "pending", expiresAt: null };
+  if (data.expires_at) {
+    if (new Date(data.expires_at).getTime() <= Date.now()) {
+      return { status: "expired", expiresAt: data.expires_at };
+    }
+    return { status: "active", expiresAt: data.expires_at };
   }
-  return { status: "active", expiresAt: data.expires_at };
+  // Opened, but no expiry date = Forever!
+  return { status: "active", expiresAt: null };
 }

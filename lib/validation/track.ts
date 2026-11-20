@@ -3,13 +3,16 @@ import { z } from "zod";
 const cardId = z.string().regex(/^[1-9][0-9]{5}$/);
 const referrer = z.string().max(500).optional();
 
-/** The only shapes /api/track accepts — LINK_CLICK must carry the link,
- * and nothing else may. */
+/** The only shapes /api/track accepts — LINK_CLICK must carry the link
+ * (and which table it belongs to), and nothing else may. */
 export const trackEventSchema = z.union([
   z.object({
     cardId,
     type: z.literal("LINK_CLICK"),
     linkId: z.uuid(),
+    // Absent means a profile link (the original behaviour); a store page
+    // sends "store" so the event can be attributed to store_links.
+    linkKind: z.enum(["profile", "store", "payment"]).optional(),
     referrer,
   }),
   z.object({
@@ -22,6 +25,7 @@ export const trackEventSchema = z.union([
       "MAPS_CLICK",
       "SHARE_CLICK",
       "SAVE_CONTACT_CLICK",
+      "REVIEW_CLICK",
     ]),
     referrer,
   }),

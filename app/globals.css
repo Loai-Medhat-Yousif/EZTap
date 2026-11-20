@@ -22,6 +22,10 @@
   --brand-primary-dark: #0043b8;
   --brand-primary-light: #4c8dff;
   --brand-primary-tint: #eaf1ff;
+  /* Text/icon colour placed on a solid primary surface. Light mode's
+     primaries are deep enough for white; dark mode flips to near-black
+     because the dark palettes are deliberately bright. */
+  --brand-primary-ink: #ffffff;
 
   --brand-background: #ffffff;
   --brand-surface: #f6f8fc;
@@ -40,6 +44,7 @@
   --brand-primary-dark: #005cf2;
   --brand-primary-light: #7bb0ff;
   --brand-primary-tint: #101a2e;
+  --brand-primary-ink: #0b1020;
 
   --brand-background: #15171F;
   --brand-surface: #15171F;
@@ -53,6 +58,40 @@
   --brand-warning: #fbbf24;
 }
 
+/* ---------------------------------------------------------------------
+ * Per-card accent colour
+ * ---------------------------------------------------------------------
+ * Applied via `data-card-accent` + an inline style from
+ * lib/cards/accent-color.ts on the public page's <main> (and on the
+ * admin preview / colour picker), so one card can recolor its own page
+ * without touching the admin UI. Only the primary family is overridden —
+ * background, ink, and borders stay on the site-wide palette.
+ *
+ * The inline style supplies the raw colour for light mode, a lightened
+ * variant for dark mode, and the matching readable ink. Everything else
+ * (hover, tint, waves) is derived here with color-mix, so any hex the
+ * user picks produces a complete, consistent palette.
+ */
+[data-card-accent] {
+  --brand-primary: var(--card-accent, #005cf2);
+  --brand-primary-dark: color-mix(in srgb, var(--brand-primary) 78%, #000);
+  --brand-primary-light: color-mix(in srgb, var(--brand-primary) 65%, #fff);
+  --brand-primary-tint: color-mix(in srgb, var(--brand-primary) 10%, #fff);
+  --brand-primary-ink: var(--card-accent-ink, #fff);
+}
+
+.dark [data-card-accent] {
+  --brand-primary: var(--card-accent-dark, #3d82ff);
+  --brand-primary-dark: color-mix(in srgb, var(--brand-primary) 78%, #000);
+  --brand-primary-light: color-mix(in srgb, var(--brand-primary) 65%, #fff);
+  --brand-primary-tint: color-mix(
+    in srgb,
+    var(--brand-primary) 18%,
+    #15171f
+  );
+  --brand-primary-ink: var(--card-accent-ink-dark, #0b1020);
+}
+
 /* Expose the tokens to Tailwind's utility generator (bg-primary,
    text-ink, border-border, etc.) via the v4 CSS-first `@theme` API. */
 @theme inline {
@@ -60,6 +99,7 @@
   --color-primary-dark: var(--brand-primary-dark);
   --color-primary-light: var(--brand-primary-light);
   --color-primary-tint: var(--brand-primary-tint);
+  --color-primary-ink: var(--brand-primary-ink);
 
   --color-background: var(--brand-background);
   --color-surface: var(--brand-surface);
@@ -163,7 +203,11 @@ body {
   left: 0;
   right: 0;
   height: 40%;
-  background: linear-gradient(to bottom, rgba(0, 92, 242, 0.08), transparent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--brand-primary) 8%, transparent),
+    transparent
+  );
 }
 
 .wave-bottom {
@@ -172,7 +216,11 @@ body {
   left: 0;
   right: 0;
   height: 40%;
-  background: linear-gradient(to top, rgba(0, 92, 242, 0.05), transparent);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--brand-primary) 5%, transparent),
+    transparent
+  );
 }
 
 .wave-svg {
@@ -181,7 +229,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  fill: rgba(0, 92, 242, 0.06);
+  fill: color-mix(in srgb, var(--brand-primary) 6%, transparent);
 }
 
 .link-in-bio-panel {
@@ -192,14 +240,16 @@ body {
   background: var(--brand-surface-raised);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-soft);
-  max-width: min(1200px, 90vw);
+  width: min(1200px, 90vw);
+  max-width: 1200px;
 }
 
 .panel-grid {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: clamp(2rem, 5vw, 4rem);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
   align-items: start;
+  min-width: 0;
 }
 
 .profile-column {
@@ -208,6 +258,7 @@ body {
   align-items: center;
   text-align: center;
   padding-top: 1rem;
+  min-width: 0;
 }
 
 .avatar-wrapper {
@@ -220,7 +271,11 @@ body {
 .avatar-ring {
   padding: 8px;
   border-radius: 50%;
-  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.9) 0%, rgba(0, 92, 242, 0.1) 100%);
+  background: radial-gradient(
+    circle at top,
+    rgba(255, 255, 255, 0.9) 0%,
+    color-mix(in srgb, var(--brand-primary) 10%, transparent) 100%
+  );
   box-shadow: 0 0 0 6px var(--brand-primary-tint), 0 20px 60px -30px rgba(6, 7, 14, 0.5);
 }
 
@@ -282,6 +337,7 @@ body {
   line-height: 1.7;
   color: var(--brand-ink);
   text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
 
 .contact-line {
@@ -289,6 +345,7 @@ body {
   font-size: clamp(0.95rem, 2vw, 1.05rem);
   font-weight: 500;
   color: var(--brand-ink);
+  max-width: 100%;
 }
 
 .email-link {
@@ -300,6 +357,7 @@ body {
 .links-column {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: clamp(1.5rem, 3vw, 2rem);
   padding-top: clamp(1rem, 2vw, 2rem);
 }
@@ -371,6 +429,7 @@ body {
   flex-direction: column;
   align-items: flex-end;
   flex: 1;
+  min-width: 0;
   gap: 0.25rem;
 }
 
@@ -380,6 +439,7 @@ body {
   line-height: 1.1;
   text-align: right;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .link-card.placeholder {
@@ -406,23 +466,138 @@ body {
   font-size: clamp(12px, 2vw, 14px);
   color: var(--brand-muted);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .action-buttons-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: clamp(1.5rem, 3vw, 2rem);
+  gap: clamp(1rem, 3vw, 2rem);
+}
+
+.site-footer {
+  width: 100%;
+  margin-top: clamp(0.5rem, 1vw, 1rem);
+  padding-top: clamp(0.75rem, 1.5vw, 1rem);
+  border-top: 1px solid var(--brand-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Deliberately understated: these point at EZTab's own profiles, so they
+   sit below the credit and stay quieter than the card's own link rows. */
+.site-social-circles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.social-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: var(--brand-surface);
+  border: 1px solid var(--brand-border);
+  color: var(--brand-muted);
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.social-circle:hover,
+.social-circle:focus-visible {
+  transform: translateY(-1px);
+  color: var(--brand-primary);
+  border-color: var(--brand-primary);
 }
 
 .footer-credit {
   text-align: center;
   font-size: 11px;
+  font-weight: 500;
   color: var(--brand-muted);
-  margin-top: clamp(0.5rem, 1vw, 1rem);
-  padding-top: clamp(0.75rem, 1.5vw, 1rem);
-  border-top: 1px solid var(--brand-border);
-  width: 100%;
+  margin: 0;
+}
+
+.footer-make-own {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:root:not(.dark) .footer-make-own {
+  font-weight: 600;
+}
+
+.profile-role {
+  margin-top: clamp(0.5rem, 1.5vw, 0.75rem);
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+  font-weight: 600;
+  color: var(--brand-primary);
+  overflow-wrap: anywhere;
+}
+
+.store-meta {
+  margin-top: clamp(1rem, 2vw, 1.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--brand-muted);
+  max-width: 100%;
+}
+
+.store-meta-line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.4rem;
+  text-align: center;
+  max-width: 100%;
+}
+
+.store-meta-line > svg {
+  flex-shrink: 0;
+  margin-top: 0.15em;
+}
+
+.store-meta-line > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-button {
+  margin-top: clamp(1.25rem, 2.5vw, 1.75rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 9999px;
+  background: var(--brand-primary);
+  color: var(--brand-primary-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow: 0 10px 30px -12px
+    color-mix(in srgb, var(--brand-primary) 70%, transparent);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.review-button:hover,
+.review-button:focus-visible {
+  transform: translateY(-2px);
+  opacity: 0.94;
 }
 
 @media (hover: none) {
@@ -463,5 +638,45 @@ body {
   
   .link-card-title {
     font-size: clamp(20px, 6vw, 28px);
+  }
+}
+
+/* Mobile admin drawer */
+@keyframes drawer-slide-in {
+  from {
+    transform: translateX(calc(-1 * var(--drawer-offset, 100%)));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mobile-drawer-backdrop {
+  animation: drawer-fade-in 0.2s ease-out;
+}
+
+.mobile-drawer-panel {
+  animation: drawer-slide-in 0.22s ease-out;
+}
+
+/* In RTL the panel enters from the right (inline-start), so the slide
+   direction flips with the document direction. */
+[dir="rtl"] .mobile-drawer-panel {
+  --drawer-offset: -100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-drawer-backdrop,
+  .mobile-drawer-panel {
+    animation: none;
   }
 }

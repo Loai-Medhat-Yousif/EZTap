@@ -22,6 +22,7 @@ export const printTemplateSchema = z.object({
   qrX: z.number().min(0).max(1),
   qrY: z.number().min(0).max(1),
   qrSize: z.number().min(16).max(400),
+  qrRotationDeg: z.number().min(0).max(360),
 });
 
 export type PrintTemplateInput = z.infer<typeof printTemplateSchema>;

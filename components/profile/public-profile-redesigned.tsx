@@ -1,110 +1,46 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
 import { User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { ContactActions } from "@/components/profile/contact-actions";
 import { ShareButton } from "@/components/profile/share-button";
 import { SaveContactButton } from "@/components/profile/save-contact-button";
+import { SiteFooter } from "@/components/profile/site-footer";
+import { useAvatarParallax } from "@/components/profile/use-avatar-parallax";
 import { getLinkIcon } from "@/lib/constants/link-icons";
 import { trackCardEvent } from "@/lib/analytics/track-client";
-import type { PublicCardView } from "@/types";
+import type { PublicCardView, PublicSiteFooter } from "@/types";
 import { getCardProfileUrl } from "@/lib/cards/urls";
+import { cardAccentStyle } from "@/lib/cards/accent-color";
 
 type ActiveProfileView = Extract<
   PublicCardView,
   { status: "ACTIVE"; type: "PROFILE" }
 >;
 
-function subscribeReducedMotion(callback: () => void) {
-  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-  mediaQuery.addEventListener("change", callback);
-  return () => mediaQuery.removeEventListener("change", callback);
-}
-
-function getReducedMotionSnapshot() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 export function PublicProfileRedesigned({
   view,
   imageUrl,
+  footer,
 }: {
   view: ActiveProfileView;
   imageUrl: string | null;
+  footer: PublicSiteFooter;
 }) {
   const t = useTranslations("publicProfile");
   const { profile, links, card_id } = view;
   const profileUrl = getCardProfileUrl(card_id);
 
-  const avatarRef = useRef<HTMLDivElement>(null);
-  const prefersReducedMotion = useSyncExternalStore(
-    subscribeReducedMotion,
-    getReducedMotionSnapshot,
-    () => false
-  );
-
-  useEffect(() => {
-    if (prefersReducedMotion) return;
-
-    const isTouchDevice =
-      window.matchMedia("(hover: none)").matches ||
-      window.matchMedia("(pointer: coarse)").matches;
-
-    if (isTouchDevice) {
-      const avatar = avatarRef.current;
-      if (avatar) {
-        avatar.classList.add("avatar-fade-in");
-      }
-      return;
-    }
-
-    let rafId: number;
-    let mouseX = 0;
-    let mouseY = 0;
-    let targetX = 0;
-    let targetY = 0;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-      mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
-    };
-
-    const handleMouseLeave = () => {
-      targetX = 0;
-      targetY = 0;
-    };
-
-    const animate = () => {
-      targetX += (mouseX - targetX) * 0.1;
-      targetY += (mouseY - targetY) * 0.1;
-
-      const maxOffset = 14;
-      const x = targetX * maxOffset;
-      const y = targetY * maxOffset;
-      const tilt = targetX * 2;
-
-      if (avatarRef.current) {
-        avatarRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${tilt}deg)`;
-      }
-
-      rafId = requestAnimationFrame(animate);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseleave", handleMouseLeave);
-    animate();
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseleave", handleMouseLeave);
-      cancelAnimationFrame(rafId);
-    };
-  }, [prefersReducedMotion]);
+  const avatarRef = useAvatarParallax<HTMLDivElement>();
 
   return (
-    <main className="link-in-bio-main">
+    <main
+      className="link-in-bio-main"
+      data-card-accent
+      style={cardAccentStyle(view.theme)}
+    >
       <div className="link-in-bio-background">
         <div className="wave-top" />
         <div className="wave-bottom" />
@@ -118,7 +54,12 @@ export function PublicProfileRedesigned({
         </svg>
       </div>
 
+      {/* The visitor's locale follows the device's language on first
+          visit (proxy.ts seeds the NEXT_LOCALE cookie from
+          Accept-Language); this switcher lets them override it for the
+          rest of the visit — the URL never changes shape. */}
       <div className="mx-auto flex max-w-5xl items-center justify-end gap-2 px-4 pt-4">
+        <LanguageSwitcher />
         <ThemeSwitcher />
       </div>
 
@@ -155,6 +96,15 @@ export function PublicProfileRedesigned({
             <h1 className="profile-name animate-fade-in-up" style={{ animationDelay: "80ms" }}>
               {profile.full_name}
             </h1>
+
+            {profile.job_title && (
+              <p
+                className="profile-role animate-fade-in-up"
+                style={{ animationDelay: "110ms" }}
+              >
+                {profile.job_title}
+              </p>
+            )}
 
             {profile.bio && (
               <p className="profile-bio animate-fade-in-up" style={{ animationDelay: "140ms" }}>
@@ -233,9 +183,11 @@ export function PublicProfileRedesigned({
               />
             </div>
 
-            <p className="footer-credit animate-fade-in-up" style={{ animationDelay: `${300 + links.length * 60}ms` }}>
-              {t("poweredBy")}
-            </p>
+            <SiteFooter
+              footer={footer}
+              cardId={card_id}
+              className="animate-fade-in-up"
+            />
           </div>
         </div>
       </div>

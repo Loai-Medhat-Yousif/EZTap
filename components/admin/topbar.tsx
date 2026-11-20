@@ -3,13 +3,17 @@ import { logout } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { ThemeSwitcher } from "@/components/shared/theme-switcher";
+import { MobileNavDrawer } from "@/components/admin/mobile-nav-drawer";
 
 export async function Topbar({ userEmail }: { userEmail: string | undefined }) {
   const t = await getTranslations("nav");
 
   return (
-    <header className="flex items-center justify-between border-b border-border bg-surface-raised px-4 py-3 md:px-6">
-      <span className="font-semibold text-ink md:hidden">EZTab</span>
+    <header className="flex items-center justify-between gap-3 border-b border-border bg-surface-raised px-4 py-3 md:px-6">
+      <div className="flex items-center gap-3 md:hidden">
+        <MobileNavDrawer />
+        <span className="font-semibold text-ink">EZTab</span>
+      </div>
       <span className="hidden md:block" />
 
       <div className="flex items-center gap-3">

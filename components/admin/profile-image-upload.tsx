@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ImageIcon, Upload, Trash2 } from "lucide-react";
 import * as adminActions from "@/app/admin/cards/actions";
-import type { ProfileEditActions } from "@/lib/cards/profile-edit-actions";
+import type { ImageEditActions } from "@/lib/cards/profile-edit-actions";
 import { compressImageForUpload } from "@/lib/images/compress-image";
 import { ImageCropDialog } from "@/components/admin/image-crop-dialog";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ export function ProfileImageUpload({
 }: {
   scope: string;
   imageUrl: string | null;
-  actions?: ProfileEditActions;
+  actions?: ImageEditActions;
 }) {
   const t = useTranslations("links");
   const inputRef = useRef<HTMLInputElement>(null);

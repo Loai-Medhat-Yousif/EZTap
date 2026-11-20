@@ -9,6 +9,7 @@ import {
   PackageOpen,
   PackageCheck,
   Coins,
+  Layers,
 } from "lucide-react";
 import {
   getIncomeOverview,
@@ -17,12 +18,16 @@ import {
   getIncomeSeries,
   getIncomeSummary,
   getPurchases,
+  getCardTypeSummary,
   type IncomeGranularity,
   type SummaryPeriod,
 } from "@/lib/data/income";
+import { cairoToday } from "@/lib/analytics/date-range";
 import { StatCard } from "@/components/admin/stat-card";
 import { IncomeChart } from "@/components/admin/income-chart";
+import { CardTypeChart } from "@/components/admin/card-type-chart";
 import { PurchasesManager } from "@/components/admin/purchases-manager";
+import { CARD_TYPE_LABEL_KEY } from "@/lib/cards/type-labels";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -42,17 +47,6 @@ function currentCairoMonth(): { year: number; month: number } {
   const get = (type: string) =>
     Number(parts.find((part) => part.type === type)?.value ?? "1");
   return { year: get("year"), month: get("month") };
-}
-
-/** ISO calendar date (YYYY-MM-DD) for "today" in Cairo — used as the
- * default value of the purchase-receipt date field. */
-function cairoToday(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Cairo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
 }
 
 function monthLabel(locale: string, year: number, month: number): string {
@@ -87,8 +81,9 @@ export default async function StatisticsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const raw = await searchParams;
-  const [t, locale, overview] = await Promise.all([
+  const [t, tCards, locale, overview] = await Promise.all([
     getTranslations("statistics"),
+    getTranslations("cards"),
     getLocale(),
     getIncomeOverview(),
   ]);
@@ -109,18 +104,24 @@ export default async function StatisticsPage({
   const granularity = parseGranularity(raw.period);
   const summaryPeriod = parseSummaryPeriod(raw.summary);
 
-  const [detail, inventory, series, summary, purchases] = await Promise.all([
-    getMonthIncomeDetail(year, month),
-    getInventoryOverview(),
-    getIncomeSeries(granularity),
-    getIncomeSummary(summaryPeriod),
-    getPurchases(),
-  ]);
+  const [detail, inventory, series, summary, purchases, typeSummary] =
+    await Promise.all([
+      getMonthIncomeDetail(year, month),
+      getInventoryOverview(),
+      getIncomeSeries(granularity),
+      getIncomeSummary(summaryPeriod),
+      getPurchases(),
+      getCardTypeSummary(),
+    ]);
 
   const money = new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EGP",
     maximumFractionDigits: 2,
+  });
+  const percentFormatter = new Intl.NumberFormat(locale, {
+    style: "percent",
+    maximumFractionDigits: 0,
   });
 
   const available = overview.months.slice();
@@ -160,7 +161,7 @@ export default async function StatisticsPage({
       {/* --- Period summary (income/spend/profit/sold) --------------- */}
       <section className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="mr-2 text-sm font-semibold text-ink">
+          <h2 className="me-2 text-sm font-semibold text-ink">
             {t("summaryTitle")}
           </h2>
           {SUMMARY_PERIODS.map((period) => {
@@ -237,10 +238,116 @@ export default async function StatisticsPage({
         </div>
       </section>
 
+      {/* --- Cards by type: created vs sold, per type --------------- */}
+      <section className="rounded-2xl border border-border bg-surface-raised p-5">
+        <div className="mb-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <Layers className="h-4 w-4 text-primary" aria-hidden />
+            {t("typeSummaryTitle")}
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            {t("typeSummaryDescription")}
+          </p>
+        </div>
+
+        <CardTypeChart
+          data={typeSummary}
+          labels={{
+            created: t("typeChartCreated"),
+            sold: t("typeChartSold"),
+          }}
+          typeLabels={Object.fromEntries(
+            typeSummary.map((row) => [row.type, tCards(CARD_TYPE_LABEL_KEY[row.type])]),
+          ) as Record<(typeof typeSummary)[number]["type"], string>}
+        />
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-start text-xs uppercase tracking-wide text-muted">
+                <th className="py-2 pe-4">{t("columnType")}</th>
+                <th className="py-2 pe-4">{t("typeColumnCreated")}</th>
+                <th className="py-2 pe-4">{t("typeColumnActive")}</th>
+                <th className="py-2 pe-4">{t("typeColumnSold")}</th>
+                <th className="py-2 pe-4">{t("typeColumnUnsold")}</th>
+                <th className="py-2 pe-4">{t("typeColumnSellThrough")}</th>
+                <th className="py-2 pe-4">{t("typeColumnRevenue")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {typeSummary.map((row) => (
+                <tr key={row.type} className="border-b border-border/60">
+                  <td className="py-2 pe-4 text-ink">
+                    {tCards(CARD_TYPE_LABEL_KEY[row.type])}
+                  </td>
+                  <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                    {row.total}
+                  </td>
+                  <td className="py-2 pe-4 font-mono tabular-nums text-muted">
+                    {row.active}
+                  </td>
+                  <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                    {row.sold}
+                  </td>
+                  <td className="py-2 pe-4 font-mono tabular-nums text-muted">
+                    {row.unsold}
+                  </td>
+                  <td className="py-2 pe-4 font-mono tabular-nums text-muted">
+                    {row.total > 0
+                      ? percentFormatter.format(row.sold / row.total)
+                      : "—"}
+                  </td>
+                  <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                    {row.revenue === 0 ? "—" : money.format(row.revenue)}
+                  </td>
+                </tr>
+              ))}
+              {(() => {
+                const totals = typeSummary.reduce(
+                  (acc, row) => ({
+                    total: acc.total + row.total,
+                    active: acc.active + row.active,
+                    sold: acc.sold + row.sold,
+                    unsold: acc.unsold + row.unsold,
+                    revenue: acc.revenue + row.revenue,
+                  }),
+                  { total: 0, active: 0, sold: 0, unsold: 0, revenue: 0 },
+                );
+                return (
+                  <tr className="border-t border-border font-semibold">
+                    <td className="py-2 pe-4 text-ink">{t("typeTotalRow")}</td>
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                      {totals.total}
+                    </td>
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                      {totals.active}
+                    </td>
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                      {totals.sold}
+                    </td>
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                      {totals.unsold}
+                    </td>
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                      {totals.total > 0
+                        ? percentFormatter.format(totals.sold / totals.total)
+                        : "—"}
+                    </td>
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
+                      {totals.revenue === 0 ? "—" : money.format(totals.revenue)}
+                    </td>
+                  </tr>
+                );
+              })()}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {/* --- Income/cost/profit over time ---------------------------- */}
       <section className="rounded-2xl border border-border bg-surface-raised p-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h2 className="mr-2 text-sm font-semibold text-ink">
+          <h2 className="me-2 text-sm font-semibold text-ink">
             {t("overTimeTitle")}
           </h2>
           {GRANULARITIES.map((gran) => {
@@ -286,7 +393,7 @@ export default async function StatisticsPage({
       {/* --- Per-month sales detail ---------------------------------- */}
       <div className="rounded-2xl border border-border bg-surface-raised p-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h2 className="mr-2 text-sm font-semibold text-ink">
+          <h2 className="me-2 text-sm font-semibold text-ink">
             {t("selectMonth")}
           </h2>
           {available.map((entry) => {
@@ -313,18 +420,18 @@ export default async function StatisticsPage({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
-                  <th className="py-2 pr-4">{t("columnCardId")}</th>
-                  <th className="py-2 pr-4">{t("columnProfile")}</th>
-                  <th className="py-2 pr-4">{t("columnType")}</th>
-                  <th className="py-2 pr-4">{t("columnPrice")}</th>
-                  <th className="py-2 pr-4">{t("columnSoldOn")}</th>
+                <tr className="border-b border-border text-start text-xs uppercase tracking-wide text-muted">
+                  <th className="py-2 pe-4">{t("columnCardId")}</th>
+                  <th className="py-2 pe-4">{t("columnProfile")}</th>
+                  <th className="py-2 pe-4">{t("columnType")}</th>
+                  <th className="py-2 pe-4">{t("columnPrice")}</th>
+                  <th className="py-2 pe-4">{t("columnSoldOn")}</th>
                 </tr>
               </thead>
               <tbody>
                 {detail.cards.map((card) => (
                   <tr key={card.card_id} className="border-b border-border/60">
-                    <td className="py-2 pr-4 font-mono text-ink">
+                    <td className="py-2 pe-4 font-mono text-ink">
                       <Link
                         href={`/admin/cards/${card.card_id}`}
                         className="hover:text-primary"
@@ -332,18 +439,16 @@ export default async function StatisticsPage({
                         {card.card_id}
                       </Link>
                     </td>
-                    <td className="py-2 pr-4 text-ink">
+                    <td className="py-2 pe-4 text-ink">
                       {card.profileFullName ?? t("unnamedProfile")}
                     </td>
-                    <td className="py-2 pr-4 text-muted">
-                      {card.type === "PROFILE"
-                        ? t("typeProfile")
-                        : t("typeGoogleReview")}
+                    <td className="py-2 pe-4 text-muted">
+                      {tCards(CARD_TYPE_LABEL_KEY[card.type])}
                     </td>
-                    <td className="py-2 pr-4 font-mono tabular-nums text-ink">
+                    <td className="py-2 pe-4 font-mono tabular-nums text-ink">
                       {card.priceEgp === null ? "—" : money.format(card.priceEgp)}
                     </td>
-                    <td className="py-2 pr-4 text-muted">
+                    <td className="py-2 pe-4 text-muted">
                       {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
                         new Date(card.soldAt),
                       )}

@@ -50,6 +50,7 @@ export async function savePrintTemplate(
     qr_x: parsed.data.qrX,
     qr_y: parsed.data.qrY,
     qr_size: parsed.data.qrSize,
+    qr_rotation_deg: parsed.data.qrRotationDeg,
     updated_at: new Date().toISOString(),
   };
 

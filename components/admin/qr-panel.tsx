@@ -19,7 +19,6 @@ export async function QrPanel({
 
       <div className="flex flex-col items-center gap-4">
         <div className="rounded-xl border border-border bg-[#15171F] p-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           {/* Server-rendered SVG endpoint, not a static asset —
               next/image can't optimize this, and doesn't need to. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -40,14 +39,12 @@ export async function QrPanel({
           {destinationUrl}
         </p>
         <div className="flex flex-wrap gap-2">
+          {/* One button only: the NFC tag and the QR code both encode
+              this exact URL, so a second "copy NFC URL" button would
+              copy the same string under a different name. */}
           <CopyButton
             value={destinationUrl}
             label={t("copyDestinationUrl")}
-            copiedLabel={t("copied")}
-          />
-          <CopyButton
-            value={destinationUrl}
-            label={t("copyNfcUrl")}
             copiedLabel={t("copied")}
           />
         </div>
